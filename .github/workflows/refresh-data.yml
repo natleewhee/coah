@@ -4,6 +4,23 @@ name: Refresh car data
 # ~2x/month, so we check weekly. The script itself is idempotent and only
 # writes when matched prices actually differ — if nothing changed, no PR
 # is opened.
+#
+# Both refresh PRs are validated and merged in THIS job (lint/test/build,
+# then `gh pr merge --squash --admin`), not left for a human to review,
+# and not via `create-pull-request`'s `--auto` merge flag. That's
+# deliberate: a PR opened with the default GITHUB_TOKEN does not trigger
+# this repo's own `pull_request`-triggered CI (a GitHub Actions
+# loop-prevention rule), so there would be no check for `--auto` to ever
+# wait on — it would sit forever, exactly what left car prices ~6 weeks
+# stale before this workflow started merging its own PRs. Running the
+# same checks a human reviewer would run, in-job, before merging is what
+# actually keeps this unattended. `--admin` bypasses the branch-protection
+# required-status-check gate on `main` for the same reason (those checks
+# can never report on a PR whose CI never ran) — if `gh pr merge` fails
+# with a permission error instead of just the check-wait, the repo's
+# branch protection needs `github-actions[bot]` (or the "Include
+# administrators" / bypass-list setting) allowed to merge without the
+# checks that structurally cannot exist for this PR.
 on:
   schedule:
     - cron: '0 4 * * 1' # every Monday, 04:00 UTC (~12:00 SGT)
@@ -34,21 +51,38 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/refresh-cars.mjs
 
+      # Same checks a human reviewer would run before merging — see the
+      # top-of-file note on why this job merges its own PRs. Cheap either
+      # way: cars.json is data, not code, so these almost always just pass.
+      - name: Validate before opening/merging any PR
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
       - name: Open PR if cars.json changed
+        id: cars_pr
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: 'chore: refresh car prices from LTA'
           title: 'Refresh car prices from latest LTA Car Cost Update'
           body: |
             Automated refresh via `.github/workflows/refresh-data.yml` and
-            `scripts/refresh-cars.mjs`. This PR only opens when the parsed
-            LTA PDF matched enough cars to pass the coverage sanity check
-            (see `isLowCoverage` in `src/lib/lta-parse.js`) and produced an
-            actual diff — review the price/OMV/VES changes below before
-            merging, since the scraper's matching is heuristic.
+            `scripts/refresh-cars.mjs`. Only opens when the parsed LTA PDF
+            matched enough cars to pass the coverage sanity check (see
+            `isLowCoverage` in `src/lib/drive/lta-parse.js`) and produced
+            an actual diff — auto-merges after lint/test/build pass in
+            this same job, since the scraper's matching, while heuristic,
+            already gates on that coverage check.
           branch: auto/refresh-car-data
           delete-branch: true
           add-paths: public/data/cars.json
+
+      - name: Merge car-price PR
+        if: steps.cars_pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --squash --delete-branch --admin "${{ steps.cars_pr.outputs.pull-request-number }}"
 
       # Fetches from data.gov.sg's public mirror of LTA's COE dataset — no
       # API key needed (previously DataMall, which required an AccountKey
@@ -63,7 +97,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/refresh-coe-history.mjs
 
+      - name: Re-validate after the COE history append
+        if: steps.coe_history.outcome == 'success'
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
       - name: Open PR if coe-history.json changed
+        id: coe_pr
         if: steps.coe_history.outcome == 'success'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -74,7 +116,13 @@ jobs:
             `scripts/refresh-coe-history.mjs`, fetched from data.gov.sg
             (no API key required) — this step is skipped, not failed, if
             the fetch errors, so it never blocks the car-price refresh
-            above.
+            above. Auto-merges after lint/test/build pass in this same job.
           branch: auto/refresh-coe-history
           delete-branch: true
           add-paths: public/data/coe-history.json
+
+      - name: Merge COE-history PR
+        if: steps.coe_pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --squash --delete-branch --admin "${{ steps.coe_pr.outputs.pull-request-number }}"

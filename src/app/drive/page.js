@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { C, SGD, parseMoneyKM } from '@/lib/drive/theme'
 import { calc, calcCeiling, COE_FALLBACK, COE_FALLBACK_AS_OF, isCoeFallbackStale, omvToLtv } from '@/lib/drive/calc'
-import { COE_ENDPOINT, CARS_ENDPOINT, CAR_CATALOG_ENDPOINT } from '@/lib/drive/endpoints'
+import { COE_ENDPOINT, CAR_CATALOG_ENDPOINT } from '@/lib/drive/endpoints'
 import { calcUsed } from '@/lib/drive/used-car'
 import { useDebounce } from '@/lib/drive/hooks'
 import {
@@ -23,91 +23,46 @@ import TrustBadges from '@/components/shared/TrustBadges'
 import Button from '@/components/shared/Button'
 import AutosaveIndicator from '@/components/shared/AutosaveIndicator'
 
-// Car prices come from /public/data/cars.json (edit that file to update prices)
+// Car prices come from /public/data/cars.json (or Supabase, when
+// configured), refreshed weekly by .github/workflows/refresh-data.yml —
+// see src/app/drive/api/car-catalog/route.js. There is deliberately no
+// live per-request fetch of the LTA PDF here: onemotoring.lta.gov.sg
+// reliably blocks that kind of traffic (no browser-like headers, coming
+// from a shared serverless IP range), so it never worked in practice —
+// see the removal note in docs/architecture.md.
 // COE premiums come from /drive/api/coe (live from data.gov.sg's mirror of LTA's COE dataset)
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function DriveReadyPage() {
   // ── Live data state ────────────────────────────────────────────────────────
-  const [baseCars,    setBaseCars]    = useState([])  // loaded from /public/data/cars.json
-  const [priceMap,    setPriceMap]    = useState({})             // from /api/cars
-  const [scrapeStatus,setScrapeStatus]= useState('loading')      // 'loading' | 'live' | 'fallback'
-  const [scrapedAt,   setScrapedAt]   = useState(null)
-  const [lowCoverage, setLowCoverage] = useState(false)           // true if the LTA parse matched suspiciously few cars
+  const [baseCars,    setBaseCars]    = useState([])  // loaded from /drive/api/car-catalog
+  const [carsUpdatedAt, setCarsUpdatedAt] = useState(null)
   const [coeData,     setCoeData]     = useState(null)
   const [coeStatus,   setCoeStatus]   = useState(null)      // 'live' | 'no_key' | 'auth_rejected' | …
   const [coeLoading,  setCoeLoading]  = useState(true)
 
-  // Merge scraped prices onto base car list. loanCap/coe are also
-  // re-derived from omv here rather than trusted from cars.json or the
-  // live scrape — those were separately hand-maintained fields that could
-  // (and did, for 9 cars) disagree with the car's own OMV, which silently
-  // told a user they qualified for a 70% loan a bank would only give at
-  // 60%. This is the one point every car — static JSON or freshly scraped
-  // OMV — passes through, so it can't drift again. See omvToLtv in calc.js.
-  const allCars = baseCars.map(car => {
-    const ltv = omvToLtv(car.omv)
-    if (priceMap[car.id]) {
-      return { ...car, ...ltv, price: priceMap[car.id], priceVerified: true }
-    }
-    return { ...car, ...ltv, priceVerified: scrapeStatus === 'live' ? false : null }
-    // priceVerified: true = from LTA PDF live, false = unmatched (show ⚠️), null = data not loaded yet
-  })
+  // loanCap/coe are re-derived from omv here rather than trusted verbatim
+  // from cars.json — those were separately hand-maintained fields that
+  // could (and did, for 9 cars) disagree with the car's own OMV, which
+  // silently told a user they qualified for a 70% loan a bank would only
+  // give at 60%. This is the one point every car passes through, so it
+  // can't drift again. See omvToLtv in calc.js.
+  const allCars = baseCars.map(car => ({ ...car, ...omvToLtv(car.omv) }))
 
   const top5Cars = allCars.filter(c => c.top5).sort((a,b) => a.rank - b.rank)
-
-  // Date.now() is impure to call directly during render (breaks hydration
-  // consistency), so "now" is captured in an effect and re-captured whenever
-  // scrapedAt changes rather than read live on every render. This
-  // synchronous setState is the standard, necessary pattern for syncing
-  // React state with the system clock (there's no meaningful async boundary
-  // to defer it behind), so the set-state-in-effect rule is disabled here
-  // rather than distorted with an artificial setTimeout.
-  const [now, setNow] = useState(null)
-  useEffect(() => {
-    setNow(Date.now())
-  }, [scrapedAt])
-
-  // Stale banner: show if scrape failed, coverage looks broken, or scrapedAt is > 2 days ago
-  const showStaleBanner = scrapeStatus === 'fallback' || lowCoverage ||
-    (scrapedAt && now ? (now - new Date(scrapedAt).getTime()) / 3600000 > 48 : false)
-
-  const staleDaysAgo = (scrapedAt && now)
-    ? Math.floor((now - new Date(scrapedAt).getTime()) / 86400000)
-    : null
 
   useEffect(() => {
     // 1. Load base car data (names, OMV, price, etc) — Supabase-backed when
     // configured, bundled JSON snapshot otherwise (see car-catalog/route.js)
     fetch(CAR_CATALOG_ENDPOINT)
       .then(r => r.json())
-      .then(d => { if (d.cars?.length > 0) setBaseCars(d.cars) })
+      .then(d => {
+        if (d.cars?.length > 0) setBaseCars(d.cars)
+        if (d.updatedAt) setCarsUpdatedAt(d.updatedAt)
+      })
       .catch(() => {})
 
-    // 2. Fetch prices from LTA PDF via our API route
-    fetch(CARS_ENDPOINT)
-      .then(r => r.json())
-      .then(d => {
-        if (d.source === 'lta_pdf' && d.prices && Object.keys(d.prices).length > 0) {
-          setPriceMap(d.prices)
-          setScrapedAt(d.scrapedAt)
-          setScrapeStatus('live')
-          setLowCoverage(!!d.lowCoverage)
-          // If API returned live OMV/VES data, update base cars with accurate values
-          if (d.omv || d.ves) {
-            setBaseCars(prev => prev.map(car => ({
-              ...car,
-              omv:  (d.omv && d.omv[car.id])  ? d.omv[car.id]  : car.omv,
-              ves:  (d.ves && d.ves[car.id])   ? d.ves[car.id]  : (car.ves ?? 0),
-            })))
-          }
-        } else {
-          setScrapeStatus('fallback')
-        }
-      })
-      .catch(() => setScrapeStatus('fallback'))
-
-    // 3. Fetch live COE from data.gov.sg
+    // 2. Fetch live COE from data.gov.sg
     // Keep the failure status, don't swallow it — a missing key, a rejected
     // key and LTA being down are three different problems, and the strip
     // below (plus /drive/data-status) can only tell them apart if the
@@ -377,21 +332,6 @@ export default function DriveReadyPage() {
         </p>
       </div>
 
-      {/* ── Stale data banner ── */}
-      {showStaleBanner && (
-        <div style={{background:C.amberBg,borderBottom:`1px solid ${C.amber}55`,padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          <span style={{fontSize:14}}>⚠️</span>
-          <p style={{fontSize:12,color:C.amberText,margin:0}}>
-            {scrapeStatus === 'fallback'
-              ? "Couldn't reach the latest LTA price update — showing our most recently saved prices instead. Figures are indicative only."
-              : lowCoverage
-                ? "This month's LTA price update looks incomplete — showing a mix of fresh and recently saved prices. Figures are indicative only."
-                : `Prices may be a little out of date — last refreshed ${staleDaysAgo === 0 ? 'today' : `${staleDaysAgo} day${staleDaysAgo !== 1 ? 's' : ''} ago`}. Figures are indicative only.`
-            }
-          </p>
-        </div>
-      )}
-
       {/* ── MAIN CONTENT ── */}
       <div style={{flex:1,display:'flex',justifyContent:'center',padding:'32px 16px 80px'}}>
         <div style={{width:'100%',maxWidth:mode==='compare'?1140:660,transition:'max-width 0.4s ease'}}>
@@ -542,7 +482,9 @@ export default function DriveReadyPage() {
                   {coeLoading ? 'Data status' : coeStatus === 'live' ? '✓ Live — data status' : 'Why? — data status'}
                 </a>
               </div>
-              <p style={{marginTop:6,textAlign:'center',fontSize:C.xs,color:C.faint}}>Prices indicative incl. COE · Figures based on latest applicable policies · Educational tool only</p>
+              <p style={{marginTop:6,textAlign:'center',fontSize:C.xs,color:C.faint}}>
+                Prices indicative incl. COE{carsUpdatedAt ? ` · Car prices as of ${new Date(carsUpdatedAt).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''} · Figures based on latest applicable policies · Educational tool only
+              </p>
             </div>
           </div>
 

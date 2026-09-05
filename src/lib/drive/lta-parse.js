@@ -1,11 +1,13 @@
 // src/lib/lta-parse.js
-// Pure parsing helpers for the LTA Car Cost Update PDF scraper
-// (src/app/drive/api/cars/route.js). Extracted so the parsing logic can be
-// unit-tested without spinning up the route or fetching a real PDF.
+// Pure parsing helpers for the LTA Car Cost Update PDF scraper, run by
+// scripts/refresh-cars.mjs from a GitHub Actions runner (weekly, via
+// .github/workflows/refresh-data.yml) rather than at request time — a
+// prior version fetched this live from a Next.js API route on every
+// visit, which onemotoring.lta.gov.sg reliably blocked in production.
+// Extracted so the parsing logic can be unit-tested without fetching a
+// real PDF.
 //
-// Uses node:zlib for /FlateDecode inflation (see extractPdfText below),
-// which is why the route that imports this had to move off the edge
-// runtime to the Node.js runtime — node:zlib isn't available on edge.
+// Uses node:zlib for /FlateDecode inflation (see extractPdfText below).
 
 import { inflateSync } from 'node:zlib'
 

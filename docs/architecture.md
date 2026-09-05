@@ -88,25 +88,40 @@ result inline. Statutory numbers cited on these pages trace back to
 
 ## DriveReady data pipeline
 
-DriveReady is the only vertical with live data.
+DriveReady has one genuinely live feed (COE premiums) and one weekly-refreshed
+one (car prices) — not two live feeds, which is a deliberate change from an
+earlier version of this pipeline (see below).
 
-- `src/app/drive/api/coe/route.js` fetches COE premiums from
-  [data.gov.sg](https://data.gov.sg/)'s mirror of LTA's COE Bidding
-  Results dataset (keyless). `src/app/drive/api/cars/route.js` parses the
-  public OneMotoring Car Cost Update PDF (`runtime: 'nodejs'` — the parser
-  needs `node:zlib` for `/FlateDecode` inflation, unavailable on edge).
+- `src/app/drive/api/coe/route.js` fetches COE premiums live, per request,
+  from [data.gov.sg](https://data.gov.sg/)'s mirror of LTA's COE Bidding
+  Results dataset (keyless).
+- `src/app/drive/api/car-catalog/route.js` serves car prices/OMV from the
+  `cars` Supabase table when configured, else the bundled
+  `public/data/cars.json` snapshot — never a live per-request fetch. An
+  earlier version of this route (`src/app/drive/api/cars/route.js`, since
+  deleted) fetched LTA's Car Cost Update PDF fresh on every visitor
+  request; `onemotoring.lta.gov.sg` reliably blocked that traffic (no
+  browser-like headers, a shared serverless IP range) and it never
+  actually worked in production. `/drive/data-status` reports the
+  catalog's source and freshness (`updatedAt`) rather than a live/dead
+  verdict for this feed.
 - `src/lib/drive/lta-parse.js` holds the pure parsing (`extractPdfText`,
   `parseLTARows`, `matchToId`, `buildPriceMaps`, `isLowCoverage`,
   `getPdfNumbers`), covered by `lta-parse.test.js` against a committed
-  synthetic `/FlateDecode` fixture in `src/lib/drive/__fixtures__/`.
+  synthetic `/FlateDecode` fixture in `src/lib/drive/__fixtures__/`. It
+  needs `node:zlib` for `/FlateDecode` inflation, which is why it can
+  only run from `scripts/refresh-cars.mjs` (plain Node, via GitHub
+  Actions) rather than an edge runtime route.
 - `scripts/refresh-cars.mjs` and `scripts/refresh-coe-history.mjs`, run
   weekly by `.github/workflows/refresh-data.yml`, open a PR against
-  `public/data/*.json` — scraped data is reviewed, never written straight
-  to prod. Both optionally dual-write to a Supabase mirror when
+  `public/data/*.json` when the parse passes its coverage sanity check
+  and there's an actual diff, and that PR **auto-merges** once CI passes
+  (`gh pr merge --auto --squash`) — so `cars.json` stays at most about a
+  week stale without needing a human to review and merge it. Both
+  scripts optionally dual-write to a Supabase mirror when
   `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are set (CI secrets only;
   `src/lib/shared/supabase.js` reads `SUPABASE_ANON_KEY` for the
   browser-side read path).
-- `/drive/data-status` renders the live health of each feed.
 
 ## Design tokens
 
