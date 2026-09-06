@@ -14,6 +14,56 @@ export function SectionDivider({ label }) {
   )
 }
 
+// Same visual shape as Drive's own Single/Compare switch — a two/three-way
+// pill toggle, copied from house/ui.js's Segmented for the joint-loan
+// share-mode picker.
+export function Segmented({ options, value, onChange }) {
+  return (
+    <div style={{display:'inline-flex',background:C.surface,border:`1.5px solid ${C.border}`,borderRadius:C.r,padding:3,gap:2}}>
+      {options.map(opt => (
+        <button
+          key={opt.value} type="button" onClick={() => onChange(opt.value)}
+          aria-pressed={value === opt.value}
+          style={{
+            padding:'7px 16px',fontSize:C.xs,fontWeight:700,letterSpacing:'0.06em',
+            textTransform:'uppercase',cursor:'pointer',borderRadius:6,border:'none',
+            fontFamily:C.fontBody,background:value===opt.value?C.ndtm:'transparent',
+            color:value===opt.value?'#fff':C.muted,transition:'all 0.2s',
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function PercentInput({ id, label, hint, value, onChange, step = '0.01' }) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <div>
+      <label htmlFor={id} style={{display:'block',fontSize:C.sm,fontWeight:600,color:C.primary,marginBottom:7}}>{label}</label>
+      <div style={{position:'relative'}}>
+        <input
+          id={id} type="text" inputMode="decimal" value={value ?? ''} onChange={onChange}
+          placeholder="0" step={step}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          style={{
+            width:'100%',boxSizing:'border-box',background:C.surface,
+            border:`1.5px solid ${focused ? C.accent : C.border}`,borderRadius:C.r,
+            padding:'11px 32px 11px 12px',color:C.primary,fontSize:C.lg,
+            fontFamily:C.fontMono,fontWeight:500,outline:'none',
+            boxShadow:focused ? `0 0 0 3px ${C.accentBg}` : 'none',
+            transition:'border-color 0.2s, box-shadow 0.2s',
+          }}
+        />
+        <span aria-hidden="true" style={{position:'absolute',right:13,top:'50%',transform:'translateY(-50%)',fontSize:C.sm,fontWeight:600,color:C.faint,pointerEvents:'none'}}>%</span>
+      </div>
+      {hint && <p style={{marginTop:5,fontSize:C.xs,color:C.muted,lineHeight:1.5}}>{hint}</p>}
+    </div>
+  )
+}
+
 export function MoneyInput({ id, label, hint, value, onChange }) {
   const [focused, setFocused] = useState(false)
   const hintId = hint ? `${id}-hint` : undefined

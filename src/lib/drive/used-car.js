@@ -71,15 +71,18 @@ export function calcUsedDepr(usedCar, y, liveCOEPremium = null) {
  * @param {object} usedCar - The used car record (price, omv, ves, rateTier, ageNow, monthsRemaining).
  * @param {?object} [liveCOE=null] - Live COE premiums {catA, catB}, or null to use the fallback.
  * @param {number} [existingDebt=0] - Existing monthly debt obligations, in dollars.
+ * @param {number} [mySharePct=100] - Your share (0-100) of this loan's instalment for TDSR purposes — see resolveJointSharePct() in calc.js. 100 (the default) means you alone service the full instalment.
  * @returns {?object} The full affordability breakdown (same shape as calc(), plus
  *   requestedTenure, maxTenureFromCoe, tenureClamped), or null if inputs are invalid.
  */
-export function calcUsed(salary, down, tenure, usedCar, liveCOE = null, existingDebt = 0) {
+export function calcUsed(salary, down, tenure, usedCar, liveCOE = null, existingDebt = 0, mySharePct = 100) {
   salary = Number(salary)
   down   = Number(down)
   tenure = Number(tenure)
   existingDebt = Number(existingDebt)
   if (!Number.isFinite(existingDebt) || existingDebt < 0) existingDebt = 0
+  mySharePct = Number(mySharePct)
+  if (!Number.isFinite(mySharePct) || mySharePct <= 0 || mySharePct > 100) mySharePct = 100
   if (!usedCar || !Number.isFinite(salary) || !Number.isFinite(down) || !Number.isFinite(tenure)) return null
   if (salary <= 0 || down <= 0 || tenure < 1) return null
   if (!Number.isFinite(usedCar.price) || usedCar.price <= 0) return null
@@ -133,7 +136,8 @@ export function calcUsed(salary, down, tenure, usedCar, liveCOE = null, existing
   else if (ratio<=0.45) { verdict='Stretch';                  vc=C.amber;  vcText=C.amberText; vbg=C.amberBg;  vborder=C.amber }
   else                  { verdict='Out of Range';              vc=C.red;    vcText=C.redText;   vbg=C.redBg;    vborder=C.red }
 
-  const tdsr = (existingDebt + monthly) / salary
+  const myMonthlyShare = monthly * (mySharePct / 100)
+  const tdsr = (existingDebt + myMonthlyShare) / salary
   const tdsrExceeded = tdsr > TDSR_LIMIT
 
   return { car, tier, loan, maxLoan, reqDown, canDown, extraDown,
@@ -142,6 +146,6 @@ export function calcUsed(salary, down, tenure, usedCar, liveCOE = null, existing
            verdict, vc, vcText, vbg, vborder,
            saving, coo, totalCoo, lcPct: loanCap / 100, deprAtTenure,
            liveCOE: liveCOE !== null, liveCOEPremium,
-           salary, down, tenure, existingDebt, tdsr, tdsrExceeded,
+           salary, down, tenure, existingDebt, mySharePct, myMonthlyShare, tdsr, tdsrExceeded,
            requestedTenure, maxTenureFromCoe, tenureClamped: tenure !== requestedTenure }
 }

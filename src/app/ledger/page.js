@@ -217,10 +217,19 @@ export default function MyLedgerPage() {
     const mortgageInstalment = mb > 0
       ? calcMonthlyInstalment(mb, num(p.mortgageRate) || 2.6, num(p.mortgageYearsLeft) || 25)
       : 0
+    // A blank/invalid share % means "not joint, it's all yours" (100%).
+    // Only scales what counts against YOUR TDSR — the instalment itself,
+    // shown elsewhere, is unaffected.
+    const shareFraction = (pct) => {
+      const n = num(pct)
+      return n > 0 && n <= 100 ? n / 100 : 1
+    }
+    const myMortgageInstalment = mortgageInstalment * shareFraction(p.mortgageSharePct)
+    const myLoansMonthly = num(p.loansMonthly) * shareFraction(p.carSharePct)
     const state = {
       salary: parsedSalary,
-      house: (pv || mb) ? { propertyValue: pv, outstandingBalance: mb, monthlyInstalment: mortgageInstalment } : null,
-      car: (num(p.carValue) || num(p.loansMonthly)) ? { carValue: num(p.carValue), loanOutstanding: 0, monthlyInstalment: num(p.loansMonthly) } : null,
+      house: (pv || mb) ? { propertyValue: pv, outstandingBalance: mb, monthlyInstalment: myMortgageInstalment } : null,
+      car: (num(p.carValue) || num(p.loansMonthly)) ? { carValue: num(p.carValue), loanOutstanding: 0, monthlyInstalment: myLoansMonthly } : null,
       cpf: { oa: num(p.cpfOa), sa: num(p.cpfSa), ma: num(p.cpfMa) },
       investmentBalance: num(p.investments),
       cashSavings: num(p.cash),

@@ -48,7 +48,7 @@ export function ResultPanel({ r, tenure, visible, slim=false }) {
   const { vc, vcText, vbg, vborder, car, tier, verdict, ratio, monthly, loan, maxLoan,
           interest, repay, takeHome, reqDown, canDown, shortfall, extraDown,
           saving, coo, totalCoo, lcPct, deprAtTenure, salary, down, tenure: rTenure, liveCOE, liveCOEPremium,
-          existingDebt, tdsr, tdsrExceeded, tenureClamped, maxTenureFromCoe } = r
+          existingDebt, mySharePct, tdsr, tdsrExceeded, tenureClamped, maxTenureFromCoe } = r
   // TDSR can fail even when the in-app "comfort" verdict says Affordable —
   // they're independent constraints (your own comfort vs. the bank's
   // regulatory ceiling) — so suggestions need to fire on either condition,
@@ -56,9 +56,12 @@ export function ResultPanel({ r, tenure, visible, slim=false }) {
   const needsHelp = verdict !== 'Affordable' || tdsrExceeded
   // Reverse-solve concrete adjustments (extra down / shorter-than-max tenure)
   // against calc() itself, so these suggestions can never contradict the
-  // numbers shown elsewhere — only computed when actually needed.
+  // numbers shown elsewhere — only computed when actually needed. Passes
+  // mySharePct through so a joint loan's suggestions stay just as tight as
+  // the TDSR figure shown above, instead of solving against a full-share
+  // assumption that would over-suggest downpayment/tenure.
   const suggestions = needsHelp
-    ? suggestAdjustments(salary, down, rTenure, car, liveCOE ? { catA: liveCOEPremium, catB: liveCOEPremium } : null, existingDebt, car.isUsed ? calcUsed : calc)
+    ? suggestAdjustments(salary, down, rTenure, car, liveCOE ? { catA: liveCOEPremium, catB: liveCOEPremium } : null, existingDebt, car.isUsed ? calcUsed : calc, mySharePct)
     : null
   const glowing = phase >= 2
   const contentIn = phase >= 3
@@ -120,9 +123,14 @@ export function ResultPanel({ r, tenure, visible, slim=false }) {
             <div style={{fontSize:C.xs,fontWeight:700,color:C.red,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>⚠ Exceeds MAS TDSR limit</div>
             <p style={{fontSize:C.sm,color:C.redText,lineHeight:1.65,margin:0}}>
               {existingDebt > 0
-                ? <>Your existing debt (<strong>{SGD(existingDebt)}/mo</strong>) plus this car&apos;s instalment (<strong>{SGD(monthly)}/mo</strong>) comes to <strong>{(tdsr*100).toFixed(1)}%</strong> of your gross income — above the bank&apos;s 55% Total Debt Servicing Ratio ceiling. A lender may reject this loan regardless of the verdict above.</>
-                : <>This instalment alone is <strong>{(tdsr*100).toFixed(1)}%</strong> of your gross income — above the bank&apos;s 55% Total Debt Servicing Ratio ceiling. A lender may reject this loan regardless of the verdict above.</>}
+                ? <>Your existing debt (<strong>{SGD(existingDebt)}/mo</strong>) plus {mySharePct < 100 ? 'your share of' : ''} this car&apos;s instalment (<strong>{SGD(r.myMonthlyShare)}/mo</strong>) comes to <strong>{(tdsr*100).toFixed(1)}%</strong> of your gross income — above the bank&apos;s 55% Total Debt Servicing Ratio ceiling. A lender may reject this loan regardless of the verdict above.</>
+                : <>{mySharePct < 100 ? 'Your share of this instalment alone is' : 'This instalment alone is'} <strong>{(tdsr*100).toFixed(1)}%</strong> of your gross income — above the bank&apos;s 55% Total Debt Servicing Ratio ceiling. A lender may reject this loan regardless of the verdict above.</>}
             </p>
+            {mySharePct < 100 && (
+              <p style={{fontSize:C.xs,color:C.redText,opacity:0.85,lineHeight:1.6,margin:'8px 0 0'}}>
+                Joint loan: the full instalment is {SGD(monthly)}/mo — you&apos;re counted for {mySharePct.toFixed(1)}% ({SGD(r.myMonthlyShare)}/mo) against your own TDSR.
+              </p>
+            )}
           </div>
         )}
         {canDown && <GaugeBar ratio={ratio} visible={metricsIn}/>}

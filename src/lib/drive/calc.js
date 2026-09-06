@@ -27,6 +27,12 @@ export const PARF_CAP = 60000
 // take-home, and counting every other debt obligation the borrower has.
 export const TDSR_LIMIT = 0.55
 
+// Shared with HouseMuch — a joint loan's TDSR apportionment isn't
+// vertical-specific. Re-exported here (not just imported) so existing
+// `import { resolveJointSharePct } from '@/lib/drive/calc'` call sites
+// keep working unchanged.
+export { resolveJointSharePct } from '../shared/jointShare.js'
+
 // ─── COE FALLBACK CONSTANTS ──────────────────────────────────────────────────
 // Updated manually after each LTA bidding (~2x/month).
 // Used when the live data.gov.sg fetch hasn't completed yet or fails.
@@ -317,15 +323,18 @@ export function calcDepr(car, y, liveCOEPremium = null) {
  * @param {object} car - The car record (price, loanCap, rateTier, coe, omv, ves, type).
  * @param {?object} [liveCOE=null] - Live COE premiums {catA, catB}, or null to use the fallback.
  * @param {number} [existingDebt=0] - Existing monthly debt obligations, in dollars.
+ * @param {number} [mySharePct=100] - Your share (0-100) of this loan's instalment for TDSR purposes — see resolveJointSharePct(). 100 (the default) means you alone service the full instalment.
  * @returns {?object} The full affordability breakdown, or null if inputs are invalid.
  */
-export function calc(salary, down, tenure, car, liveCOE = null, existingDebt = 0) {
+export function calc(salary, down, tenure, car, liveCOE = null, existingDebt = 0, mySharePct = 100) {
   // Coerce and validate inputs — reject non-numeric, non-positive, or absurd values
   salary = Number(salary)
   down   = Number(down)
   tenure = Number(tenure)
   existingDebt = Number(existingDebt)
   if (!Number.isFinite(existingDebt) || existingDebt < 0) existingDebt = 0
+  mySharePct = Number(mySharePct)
+  if (!Number.isFinite(mySharePct) || mySharePct <= 0 || mySharePct > 100) mySharePct = 100
   if (!car || !Number.isFinite(salary) || !Number.isFinite(down) || !Number.isFinite(tenure)) return null
   if (salary <= 0 || down <= 0 || tenure < 1 || tenure > 10) return null
   if (!Number.isFinite(car.price) || car.price <= 0) return null
@@ -372,8 +381,10 @@ export function calc(salary, down, tenure, car, liveCOE = null, existingDebt = 0
 
   // TDSR uses GROSS monthly income (salary), not the 80%-take-home figure
   // the comfort verdict above is based on — and counts existing debt
-  // obligations on top of this loan's own instalment.
-  const tdsr = (existingDebt + monthly) / salary
+  // obligations on top of only YOUR share of this loan's instalment
+  // (mySharePct=100 unless it's a joint loan — see resolveJointSharePct()).
+  const myMonthlyShare = monthly * (mySharePct / 100)
+  const tdsr = (existingDebt + myMonthlyShare) / salary
   const tdsrExceeded = tdsr > TDSR_LIMIT
 
   return { car, tier, loan, maxLoan, reqDown, canDown, extraDown,
@@ -382,7 +393,7 @@ export function calc(salary, down, tenure, car, liveCOE = null, existingDebt = 0
            verdict, vc, vcText, vbg, vborder,
            saving, coo, totalCoo, lcPct:car.loanCap/100, deprAtTenure,
            liveCOE: liveCOE !== null, liveCOEPremium,
-           salary, down, tenure, existingDebt, tdsr, tdsrExceeded }
+           salary, down, tenure, existingDebt, mySharePct, myMonthlyShare, tdsr, tdsrExceeded }
 }
 
 /**
@@ -393,17 +404,25 @@ export function calc(salary, down, tenure, car, liveCOE = null, existingDebt = 0
  * @param {number} down - Downpayment available, in dollars.
  * @param {number} tenure - Loan tenure in years.
  * @param {number} [existingDebt=0] - Existing monthly debt obligations, in dollars.
+ * @param {number} [mySharePct=100] - Your share (0-100) of the loan-to-be's instalment for TDSR purposes — see resolveJointSharePct(). 100 (the default) means you alone service the full instalment.
  * @returns {?{catA: number, catB: number, takeHome: number, maxMonthly: number, maxMonthlyComfort: number, maxMonthlyTdsr: number, tdsrBinding: boolean}}
  *   Affordable price ceilings for each COE category (rounded down to the nearest $1,000), or null if inputs are invalid.
  */
-export function calcCeiling(salary, down, tenure, existingDebt = 0) {
+export function calcCeiling(salary, down, tenure, existingDebt = 0, mySharePct = 100) {
   salary = Number(salary); down = Number(down); tenure = Number(tenure)
   existingDebt = Number(existingDebt)
   if (!Number.isFinite(existingDebt) || existingDebt < 0) existingDebt = 0
+  mySharePct = Number(mySharePct)
+  if (!Number.isFinite(mySharePct) || mySharePct <= 0 || mySharePct > 100) mySharePct = 100
   if (!salary || salary <= 0 || !tenure || tenure < 1) return null
   const takeHome = salary * 0.80
   const maxMonthlyComfort = takeHome * 0.30
-  const maxMonthlyTdsr = Math.max(0, salary * TDSR_LIMIT - existingDebt)
+  // My TDSR budget (salary*TDSR_LIMIT - existingDebt) only has to cover MY
+  // share of this loan's instalment, so the full instalment it buys can be
+  // proportionally larger — divide back up by mySharePct to convert "my
+  // share of the budget" into "full instalment this budget affords".
+  const myTdsrBudget = Math.max(0, salary * TDSR_LIMIT - existingDebt)
+  const maxMonthlyTdsr = myTdsrBudget / (mySharePct / 100)
   const maxMonthly = Math.min(maxMonthlyComfort, maxMonthlyTdsr)
   const tdsrBinding = maxMonthlyTdsr < maxMonthlyComfort
   const months = tenure * 12
