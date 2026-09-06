@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { C, SGD, parseMoney } from '@/lib/house/theme'
 import { calcSale, calcBSD } from '@/lib/house/calc'
+import { resolveJointSharePct } from '@/lib/shared/jointShare'
 import { saveHouseNumbers, saveToolInputs, loadToolInputs } from '@/lib/shared/profile'
 import { MoneyInput, PercentInput, NumberInput, DateInput, Segmented, SectionDivider, FeeInput } from '@/components/house/ui'
 import SaleResults from '@/components/house/SaleResults'
@@ -28,6 +29,14 @@ export default function HouseMuchPage() {
   // Off by default (100% — today's behavior, unchanged for a sole owner).
   const [isJointLoan, setIsJointLoan] = useState(false)
   const [yourSharePct, setYourSharePct] = useState('50')
+  // Alternate way to arrive at yourSharePct: MAS's actual income-weighted
+  // TDSR apportionment (your share = your income ÷ combined income)
+  // instead of typing a percentage directly. 'manual' (the default)
+  // preserves today's behavior exactly — yourSharePct stays a direct,
+  // user-typed value either way; 'income' mode just computes it FOR you.
+  const [shareMode, setShareMode] = useState('manual') // 'manual' | 'income'
+  const [myIncome, setMyIncome] = useState('')
+  const [coBorrowerIncome, setCoBorrowerIncome] = useState('')
   // Person B's own CPF — separate from cpfOutlay (Person A's) below, since
   // CPF is tracked per person and must never be split by share. Blank/0
   // by default so a joint loan with only your own CPF known behaves
@@ -97,6 +106,9 @@ export default function HouseMuchPage() {
       setPropertyType(saved.propertyType ?? 'private')
       setIsJointLoan(!!saved.isJointLoan)
       setYourSharePct(saved.yourSharePct ?? '50')
+      setShareMode(saved.shareMode === 'income' ? 'income' : 'manual')
+      setMyIncome(saved.myIncome ?? '')
+      setCoBorrowerIncome(saved.coBorrowerIncome ?? '')
       setPersonBCpfOutlay(saved.personBCpfOutlay ?? '')
       setPersonBCpfPrincipalOverride(saved.personBCpfPrincipalOverride ?? '')
       setPersonBCpfInterestOverride(saved.personBCpfInterestOverride ?? '')
@@ -134,7 +146,7 @@ export default function HouseMuchPage() {
   useEffect(() => {
     if (!hasRestored) return
     const ok = saveToolInputs('house', {
-      propertyType, isJointLoan, yourSharePct,
+      propertyType, isJointLoan, yourSharePct, shareMode, myIncome, coBorrowerIncome,
       personBCpfOutlay, personBCpfPrincipalOverride, personBCpfInterestOverride, cashProceedsSplitMode,
       purchasePrice, purchaseDate, cpfOutlay, loanTaken, mortgageRate, loanTenure,
       legalFeesAtPurchase, agentFeeAtPurchaseMode, agentFeeAtPurchaseRaw, sunkCost, monthlyCpfServicing,
@@ -146,7 +158,7 @@ export default function HouseMuchPage() {
       setSavedTick(t => t + 1)
     }
   }, [
-    hasRestored, propertyType, isJointLoan, yourSharePct,
+    hasRestored, propertyType, isJointLoan, yourSharePct, shareMode, myIncome, coBorrowerIncome,
     personBCpfOutlay, personBCpfPrincipalOverride, personBCpfInterestOverride, cashProceedsSplitMode,
     purchasePrice, purchaseDate, cpfOutlay, loanTaken, mortgageRate, loanTenure,
     legalFeesAtPurchase, agentFeeAtPurchaseMode, agentFeeAtPurchaseRaw, sunkCost, monthlyCpfServicing,
@@ -173,6 +185,14 @@ export default function HouseMuchPage() {
   const cashOutlayPreview = num(purchasePrice) + bsdAtPurchasePreview + num(legalFeesAtPurchase) + agentFeesAtPurchase
     - num(loanTaken) - num(cpfOutlay)
 
+  // When shareMode is 'income', your share is DERIVED from gross incomes
+  // (MAS's actual joint-TDSR apportionment) instead of the directly-typed
+  // yourSharePct — see resolveJointSharePct. 'manual' mode (the default)
+  // is exactly today's behavior: yourSharePct as typed.
+  const effectiveSharePct = shareMode === 'income'
+    ? resolveJointSharePct('income', numSigned(myIncome), numSigned(coBorrowerIncome), null)
+    : numSigned(yourSharePct)
+
   const result = calculated && isReady ? calcSale({
     propertyType,
     purchasePrice: num(purchasePrice), purchaseDate,
@@ -187,7 +207,7 @@ export default function HouseMuchPage() {
     cpfPrincipalOverride: cpfPrincipalOverride !== '' ? num(cpfPrincipalOverride) : null,
     cpfAccruedInterestOverride: cpfInterestOverride !== '' ? num(cpfInterestOverride) : null,
     ssdOverride: ssdOverride !== '' ? num(ssdOverride) : null,
-    yourSharePct: isJointLoan ? numSigned(yourSharePct) : 100,
+    yourSharePct: isJointLoan ? effectiveSharePct : 100,
     personBCpfOutlay: isJointLoan ? num(personBCpfOutlay) : 0,
     personBCpfPrincipalOverride: isJointLoan && personBCpfPrincipalOverride !== '' ? num(personBCpfPrincipalOverride) : null,
     personBCpfAccruedInterestOverride: isJointLoan && personBCpfInterestOverride !== '' ? num(personBCpfInterestOverride) : null,
@@ -325,20 +345,37 @@ export default function HouseMuchPage() {
               <div style={{ marginTop: 12, maxWidth: 320 }}>
                 <div style={{ fontSize: C.sm, fontWeight: 600, color: C.primary, marginBottom: 7 }}>Your share</div>
                 <Segmented
-                  value={yourSharePct === '50' ? '50' : 'custom'}
-                  onChange={v => setYourSharePct(v === '50' ? '50' : (yourSharePct === '50' ? '60' : yourSharePct))}
-                  options={[{ value: '50', label: '50 / 50' }, { value: 'custom', label: 'Custom' }]}
+                  value={shareMode === 'income' ? 'income' : (yourSharePct === '50' ? '50' : 'custom')}
+                  onChange={v => {
+                    if (v === 'income') { setShareMode('income'); return }
+                    setShareMode('manual')
+                    setYourSharePct(v === '50' ? '50' : (yourSharePct === '50' ? '60' : yourSharePct))
+                  }}
+                  options={[{ value: '50', label: '50 / 50' }, { value: 'custom', label: 'Custom' }, { value: 'income', label: 'By income' }]}
                 />
-                {yourSharePct !== '50' && (
+                {shareMode === 'manual' && yourSharePct !== '50' && (
                   <div style={{ marginTop: 10, maxWidth: 160 }}>
                     <PercentInput id="your-share-pct" label="Your share" value={yourSharePct} onChange={e => setYourSharePct(e.target.value)} />
                   </div>
                 )}
-                {yourSharePct === '' ? (
+                {shareMode === 'income' && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                      <MoneyInput id="my-income" label="Your monthly gross income" value={myIncome} onChange={e => setMyIncome(e.target.value)} />
+                      <MoneyInput id="co-borrower-income" label="Co-borrower's monthly gross income" value={coBorrowerIncome} onChange={e => setCoBorrowerIncome(e.target.value)} />
+                    </div>
+                    {(numSigned(myIncome) + numSigned(coBorrowerIncome)) > 0 && (
+                      <p style={{ marginTop: 8, fontSize: C.xs, color: C.muted, lineHeight: 1.5 }}>
+                        Your share: <strong style={{ color: C.accent, fontFamily: C.fontMono }}>{effectiveSharePct.toFixed(1)}%</strong> — your income ÷ combined income, the same apportionment a bank uses on a joint TDSR assessment.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {shareMode === 'manual' && yourSharePct === '' ? (
                   <p style={{ marginTop: 6, fontSize: C.xs, color: C.redText, lineHeight: 1.5 }}>
                     Empty is treated as a 0% share — your cash and profit/loss figures below will come out as zero until you enter a number.
                   </p>
-                ) : (numSigned(yourSharePct) < 0 || numSigned(yourSharePct) > 100) && (
+                ) : shareMode === 'manual' && (numSigned(yourSharePct) < 0 || numSigned(yourSharePct) > 100) && (
                   <p style={{ marginTop: 6, fontSize: C.xs, color: C.redText, lineHeight: 1.5 }}>
                     A share has to be between 0% and 100% — this will be treated as {numSigned(yourSharePct) > 100 ? '100%' : '0%'}.
                   </p>

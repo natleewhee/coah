@@ -14,6 +14,10 @@ export function serializeToParams(state) {
   if (state.salaryRaw) params.set('salary', state.salaryRaw)
   if (state.downRaw) params.set('down', state.downRaw)
   if (state.existingDebtRaw) params.set('debt', state.existingDebtRaw)
+  if (state.isJointCarLoan) params.set('joint', '1')
+  if (state.carShareMode === 'manual') params.set('shareMode', 'manual')
+  if (state.coBorrowerIncomeRaw) params.set('coIncome', state.coBorrowerIncomeRaw)
+  if (state.manualCarSharePctRaw) params.set('sharePct', state.manualCarSharePctRaw)
   if (state.tenure && state.tenure !== 7) params.set('tenure', String(state.tenure))
   if (state.mode && state.mode !== 'single') params.set('mode', state.mode)
   if (state.carAId) params.set('carA', state.carAId)
@@ -32,6 +36,12 @@ export function deserializeFromParams(params) {
   if (downRaw && /^\d+$/.test(downRaw)) out.downRaw = downRaw
   const existingDebtRaw = params.get('debt')
   if (existingDebtRaw && /^\d+$/.test(existingDebtRaw)) out.existingDebtRaw = existingDebtRaw
+  if (params.get('joint') === '1') out.isJointCarLoan = true
+  if (params.get('shareMode') === 'manual') out.carShareMode = 'manual'
+  const coIncomeRaw = params.get('coIncome')
+  if (coIncomeRaw && /^\d+$/.test(coIncomeRaw)) out.coBorrowerIncomeRaw = coIncomeRaw
+  const sharePctRaw = params.get('sharePct')
+  if (sharePctRaw && /^\d{1,3}$/.test(sharePctRaw)) out.manualCarSharePctRaw = sharePctRaw
   const tenureRaw = params.get('tenure')
   if (tenureRaw) {
     const n = parseInt(tenureRaw, 10)
@@ -55,6 +65,10 @@ export function serializeToJSON(state) {
     salaryRaw: state.salaryRaw || '',
     downRaw: state.downRaw || '',
     existingDebtRaw: state.existingDebtRaw || '',
+    isJointCarLoan: !!state.isJointCarLoan,
+    carShareMode: state.carShareMode === 'manual' ? 'manual' : 'income',
+    coBorrowerIncomeRaw: state.coBorrowerIncomeRaw || '',
+    manualCarSharePctRaw: state.manualCarSharePctRaw || '',
     tenure: state.tenure || 7,
     mode: state.mode || 'single',
     carAId: state.carAId || null,
@@ -75,6 +89,10 @@ export function sanitizeState(parsed) {
   if (typeof parsed.salaryRaw === 'string' && /^\d*$/.test(parsed.salaryRaw)) out.salaryRaw = parsed.salaryRaw
   if (typeof parsed.downRaw === 'string' && /^\d*$/.test(parsed.downRaw)) out.downRaw = parsed.downRaw
   if (typeof parsed.existingDebtRaw === 'string' && /^\d*$/.test(parsed.existingDebtRaw)) out.existingDebtRaw = parsed.existingDebtRaw
+  if (typeof parsed.isJointCarLoan === 'boolean') out.isJointCarLoan = parsed.isJointCarLoan
+  if (parsed.carShareMode === 'income' || parsed.carShareMode === 'manual') out.carShareMode = parsed.carShareMode
+  if (typeof parsed.coBorrowerIncomeRaw === 'string' && /^\d*$/.test(parsed.coBorrowerIncomeRaw)) out.coBorrowerIncomeRaw = parsed.coBorrowerIncomeRaw
+  if (typeof parsed.manualCarSharePctRaw === 'string' && /^\d*$/.test(parsed.manualCarSharePctRaw)) out.manualCarSharePctRaw = parsed.manualCarSharePctRaw
   if (Number.isInteger(parsed.tenure) && parsed.tenure >= 1 && parsed.tenure <= 7) out.tenure = parsed.tenure
   if (parsed.mode === 'single' || parsed.mode === 'compare') out.mode = parsed.mode
   if (typeof parsed.carAId === 'string') out.carAId = parsed.carAId

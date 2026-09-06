@@ -38,21 +38,22 @@ const passes = (r, targetRatio) => r && r.canDown && r.ratio <= targetRatio && !
  * @param {number} [targetRatio=0.30] - Target monthly-instalment-to-take-home ratio.
  * @param {Function} [calcFn=calc] - The affordability function to use as the oracle
  *   (swap for calcUsed() when solving for a used car).
+ * @param {number} [mySharePct=100] - Your share (0-100) of the loan's instalment for TDSR purposes.
  * @returns {?number} 0 if already at/under target, null if unachievable via downpayment
  *   alone (even at down = car.price), or the extra dollars needed (rounded up).
  */
-export function solveExtraDownNeeded(salary, down, tenure, car, liveCOE, existingDebt = 0, targetRatio = 0.30, calcFn = calc) {
-  const current = calcFn(salary, down, tenure, car, liveCOE, existingDebt)
+export function solveExtraDownNeeded(salary, down, tenure, car, liveCOE, existingDebt = 0, targetRatio = 0.30, calcFn = calc, mySharePct = 100) {
+  const current = calcFn(salary, down, tenure, car, liveCOE, existingDebt, mySharePct)
   if (!current) return null
   if (passes(current, targetRatio)) return 0
 
-  const atMaxDown = calcFn(salary, car.price, tenure, car, liveCOE, existingDebt)
+  const atMaxDown = calcFn(salary, car.price, tenure, car, liveCOE, existingDebt, mySharePct)
   if (!passes(atMaxDown, targetRatio)) return null
 
   let lo = down, hi = car.price
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2
-    const r = calcFn(salary, mid, tenure, car, liveCOE, existingDebt)
+    const r = calcFn(salary, mid, tenure, car, liveCOE, existingDebt, mySharePct)
     if (passes(r, targetRatio)) hi = mid
     else lo = mid
   }
@@ -75,11 +76,12 @@ export function solveExtraDownNeeded(salary, down, tenure, car, liveCOE, existin
  * @param {number} [existingDebt=0] - Existing monthly debt obligations, in dollars.
  * @param {number} [targetRatio=0.30] - Target monthly-instalment-to-take-home ratio.
  * @param {Function} [calcFn=calc] - The affordability function to use as the oracle.
+ * @param {number} [mySharePct=100] - Your share (0-100) of the loan's instalment for TDSR purposes.
  * @returns {?number} The smallest passing tenure in years, or null if none do.
  */
-export function solveMinTenureNeeded(salary, down, car, liveCOE, existingDebt = 0, targetRatio = 0.30, calcFn = calc) {
+export function solveMinTenureNeeded(salary, down, car, liveCOE, existingDebt = 0, targetRatio = 0.30, calcFn = calc, mySharePct = 100) {
   for (let t = 1; t <= MAX_TENURE; t++) {
-    const r = calcFn(salary, down, t, car, liveCOE, existingDebt)
+    const r = calcFn(salary, down, t, car, liveCOE, existingDebt, mySharePct)
     if (passes(r, targetRatio)) return t
   }
   return null
@@ -104,13 +106,14 @@ export function solveMinTenureNeeded(salary, down, car, liveCOE, existingDebt = 
  * @param {?object} liveCOE - Live COE premiums, or null.
  * @param {number} [existingDebt=0] - Existing monthly debt obligations, in dollars.
  * @param {Function} [calcFn=calc] - The affordability function to use as the oracle.
+ * @param {number} [mySharePct=100] - Your share (0-100) of the loan's instalment for TDSR purposes.
  * @returns {{extraDown: (number|null), minTenure: (number|null), ceiling: (object|null)}}
  *   The bundled adjustment suggestions.
  */
-export function suggestAdjustments(salary, down, tenure, car, liveCOE, existingDebt = 0, calcFn = calc) {
+export function suggestAdjustments(salary, down, tenure, car, liveCOE, existingDebt = 0, calcFn = calc, mySharePct = 100) {
   return {
-    extraDown: solveExtraDownNeeded(salary, down, tenure, car, liveCOE, existingDebt, 0.30, calcFn),
-    minTenure: solveMinTenureNeeded(salary, down, car, liveCOE, existingDebt, 0.30, calcFn),
-    ceiling: calcCeiling(salary, down, tenure, existingDebt),
+    extraDown: solveExtraDownNeeded(salary, down, tenure, car, liveCOE, existingDebt, 0.30, calcFn, mySharePct),
+    minTenure: solveMinTenureNeeded(salary, down, car, liveCOE, existingDebt, 0.30, calcFn, mySharePct),
+    ceiling: calcCeiling(salary, down, tenure, existingDebt, mySharePct),
   }
 }

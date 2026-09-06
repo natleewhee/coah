@@ -44,12 +44,14 @@ export default function PositionEditor({ position, onChange, synced }) {
         <MoneyInput id="pos-mb" label="Mortgage balance" value={position.mortgageBalance} onChange={set('mortgageBalance')} hint={hint('mortgageBalance', 'HouseMuch')} />
         <PercentInput id="pos-mr" label="Mortgage rate" value={position.mortgageRate} onChange={set('mortgageRate')} hint={pctHint('mortgageRate', 'HouseMuch')} />
         <NumberInput id="pos-my" label="Years left" suffix="yr" value={position.mortgageYearsLeft} onChange={set('mortgageYearsLeft')} hint={pctHint('mortgageYearsLeft', 'HouseMuch')} />
+        <PercentInput id="pos-mortgage-share" label="Your share, if joint" value={position.mortgageSharePct} onChange={set('mortgageSharePct')} hint="Blank = 100% yours. Only affects the TDSR figure below — HouseMuch's own joint-loan support (income-weighted or manual) is the fuller version of this." />
       </Group>
 
       <Group title="Car & other loans">
         <MoneyInput id="pos-cv" label="Car value" value={position.carValue} onChange={set('carValue')} hint={hint('carValue', 'DriveReady')} />
         <MoneyInput id="pos-lm" label="Loan payments / mo" value={position.loansMonthly} onChange={set('loansMonthly')} hint={hint('loansMonthly', 'DriveReady — car, personal')} />
         <NumberInput id="pos-ly" label="Years until paid off" suffix="yr" value={position.loansYearsLeft} onChange={set('loansYearsLeft')} hint={pctHint('loansYearsLeft', 'DriveReady')} />
+        <PercentInput id="pos-car-share" label="Your share, if joint" value={position.carSharePct} onChange={set('carSharePct')} hint="Blank = 100% yours. Only affects the TDSR figure below." />
       </Group>
 
       <p style={{ fontSize: C.xs, color: C.faint, lineHeight: 1.5, margin: 0 }}>

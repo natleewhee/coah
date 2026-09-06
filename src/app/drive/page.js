@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { C, SGD, parseMoneyKM } from '@/lib/drive/theme'
-import { calc, calcCeiling, COE_FALLBACK, COE_FALLBACK_AS_OF, isCoeFallbackStale, omvToLtv } from '@/lib/drive/calc'
+import { calc, calcCeiling, resolveJointSharePct, COE_FALLBACK, COE_FALLBACK_AS_OF, isCoeFallbackStale, omvToLtv } from '@/lib/drive/calc'
 import { COE_ENDPOINT, CAR_CATALOG_ENDPOINT } from '@/lib/drive/endpoints'
 import { calcUsed } from '@/lib/drive/used-car'
 import { useDebounce } from '@/lib/drive/hooks'
@@ -12,7 +12,7 @@ import {
 } from '@/lib/drive/persist'
 import { loadGarage, saveGarage, makeGarageEntry, addEntry, removeEntry, renameEntry, defaultEntryName } from '@/lib/drive/garage'
 import { saveDriveNumbers, saveToolInputs, loadToolInputs } from '@/lib/shared/profile'
-import { SectionDivider, MoneyInput } from '@/components/drive/ui'
+import { SectionDivider, MoneyInput, Segmented, PercentInput } from '@/components/drive/ui'
 import { CarPicker } from '@/components/drive/CarPicker'
 import { UsedCarForm } from '@/components/drive/UsedCarForm'
 import { ResultPanel } from '@/components/drive/ResultPanel'
@@ -84,6 +84,16 @@ export default function DriveReadyPage() {
   const [down,      setDown]      = useState('')
   const [existingDebtRaw, setExistingDebtRaw] = useState('')
   const [existingDebt,    setExistingDebt]    = useState('')
+  // Joint car loan: when set, only YOUR share of the instalment counts
+  // against YOUR TDSR (see resolveJointSharePct/calc.js) — the instalment
+  // itself is unchanged, it's just serviced by two incomes. 'income' mode
+  // derives your share from gross incomes (MAS's actual apportionment
+  // method); 'manual' lets you type your share directly.
+  const [isJointCarLoan, setIsJointCarLoan] = useState(false)
+  const [carShareMode, setCarShareMode] = useState('income') // 'income' | 'manual'
+  const [coBorrowerIncomeRaw, setCoBorrowerIncomeRaw] = useState('')
+  const [coBorrowerIncome,    setCoBorrowerIncome]    = useState('')
+  const [manualCarSharePctRaw, setManualCarSharePctRaw] = useState('')
   const [tenure,    setTenure]    = useState(7)
   const [mode,      setMode]      = useState('single')
   const [carA,      setCarA]      = useState(null)
@@ -128,6 +138,12 @@ export default function DriveReadyPage() {
     setSalaryRaw(salaryRawVal); setSalary(salaryRawVal ? Number(salaryRawVal).toLocaleString('en-SG') : '')
     setDownRaw(downRawVal); setDown(downRawVal ? Number(downRawVal).toLocaleString('en-SG') : '')
     setExistingDebtRaw(existingDebtRawVal); setExistingDebt(existingDebtRawVal ? Number(existingDebtRawVal).toLocaleString('en-SG') : '')
+    const coBorrowerIncomeRawVal = restored.coBorrowerIncomeRaw || ''
+    setIsJointCarLoan(!!restored.isJointCarLoan)
+    setCarShareMode(restored.carShareMode === 'manual' ? 'manual' : 'income')
+    setCoBorrowerIncomeRaw(coBorrowerIncomeRawVal)
+    setCoBorrowerIncome(coBorrowerIncomeRawVal ? Number(coBorrowerIncomeRawVal).toLocaleString('en-SG') : '')
+    setManualCarSharePctRaw(restored.manualCarSharePctRaw || '')
     setTenure(restored.tenure || 7)
     setMode(restored.mode || 'single')
     setCustomPriceA(restored.customPriceA || '')
@@ -169,7 +185,7 @@ export default function DriveReadyPage() {
   // to whichever profile is active, same as every other tool.
   useEffect(() => {
     if (!hasRestored) return
-    const state = { salaryRaw, downRaw, existingDebtRaw, tenure, mode, carAId: carA?.id ?? null, carBId: carB?.id ?? null, customPriceA, customPriceB, calculated }
+    const state = { salaryRaw, downRaw, existingDebtRaw, isJointCarLoan, carShareMode, coBorrowerIncomeRaw, manualCarSharePctRaw, tenure, mode, carAId: carA?.id ?? null, carBId: carB?.id ?? null, customPriceA, customPriceB, calculated }
     const ok = saveToolInputs('drive', state)
     // Only flash "Saved" when the write actually landed — saveToolInputs
     // returns false on a silently-swallowed quota/private-browsing failure.
@@ -179,7 +195,7 @@ export default function DriveReadyPage() {
     const params = serializeToParams(state)
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
-  }, [hasRestored, salaryRaw, downRaw, existingDebtRaw, tenure, mode, carA?.id, carB?.id, customPriceA, customPriceB, calculated])
+  }, [hasRestored, salaryRaw, downRaw, existingDebtRaw, isJointCarLoan, carShareMode, coBorrowerIncomeRaw, manualCarSharePctRaw, tenure, mode, carA?.id, carB?.id, customPriceA, customPriceB, calculated])
 
   useEffect(() => {
     if (savedTick === 0) return
@@ -191,7 +207,11 @@ export default function DriveReadyPage() {
   const dSalary = useDebounce(parseInt(salaryRaw||'0', 10), 120)
   const dDown   = useDebounce(parseInt(downRaw||'0',   10), 120)
   const dExistingDebt = useDebounce(parseInt(existingDebtRaw||'0', 10), 120)
+  const dCoBorrowerIncome = useDebounce(parseInt(coBorrowerIncomeRaw||'0', 10), 120)
   const dTenure = useDebounce(tenure, 80)
+  const carSharePct = isJointCarLoan
+    ? resolveJointSharePct(carShareMode, dSalary, dCoBorrowerIncome, parseInt(manualCarSharePctRaw||'0', 10))
+    : 100
 
   // Pass live COE to calc so it uses real premiums when available
   const liveCOE = coeData ? { catA: coeData.catA.premium, catB: coeData.catB.premium } : null
@@ -200,8 +220,8 @@ export default function DriveReadyPage() {
   const effCarA = conditionA === 'used' ? usedCarA : (carA && customPriceA ? { ...carA, price: parseInt(customPriceA.replace(/,/g,''), 10) } : carA)
   const effCarB = conditionB === 'used' ? usedCarB : (carB && customPriceB ? { ...carB, price: parseInt(customPriceB.replace(/,/g,''), 10) } : carB)
   const calcForSlot = (condition, ...args) => condition === 'used' ? calcUsed(...args) : calc(...args)
-  const rA = (calculated && effCarA)                      ? calcForSlot(conditionA, dSalary, dDown, dTenure, effCarA, liveCOE, dExistingDebt) : null
-  const rB = (calculated && effCarB && mode==='compare')   ? calcForSlot(conditionB, dSalary, dDown, dTenure, effCarB, liveCOE, dExistingDebt) : null
+  const rA = (calculated && effCarA)                      ? calcForSlot(conditionA, dSalary, dDown, dTenure, effCarA, liveCOE, dExistingDebt, carSharePct) : null
+  const rB = (calculated && effCarB && mode==='compare')   ? calcForSlot(conditionB, dSalary, dDown, dTenure, effCarB, liveCOE, dExistingDebt, carSharePct) : null
 
   // Hand off this car's numbers so RetireWell can nudge against the
   // monthly cost and MyLedger can use it as a baseline module — stored
@@ -209,7 +229,11 @@ export default function DriveReadyPage() {
   useEffect(() => {
     if (!rA) return
     saveDriveNumbers({
-      monthlyInstalment: rA.monthly,
+      // Your share only, when this is a joint loan (rA.myMonthlyShare ==
+      // rA.monthly when it isn't) — matches HouseMuch's convention of
+      // persisting an already-scaled instalment, so MyLedger's TDSR-
+      // across-every-loan view counts only what's actually yours.
+      monthlyInstalment: rA.myMonthlyShare,
       carLabel: rA.car?.short || rA.car?.name || null,
       salary: rA.salary,
       loanOutstanding: rA.loan,
@@ -226,7 +250,7 @@ export default function DriveReadyPage() {
       carValue: rA.car?.price,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed off rA's own primitive fields, not `rA` itself (a new object every render, which would re-save on every keystroke instead of only when these actually change)
-  }, [rA?.monthly, rA?.car?.short, rA?.car?.name, rA?.salary, rA?.loan, rA?.tier?.rate, rA?.tenure, rA?.car?.price])
+  }, [rA?.myMonthlyShare, rA?.car?.short, rA?.car?.name, rA?.salary, rA?.loan, rA?.tier?.rate, rA?.tenure, rA?.car?.price])
 
   // Accepts "80k"/"1.2m" shorthand alongside plain digits. The displayed
   // field (salary/down/existingDebt) is left as literal typed text while
@@ -239,6 +263,7 @@ export default function DriveReadyPage() {
   const handleSalary = e => { const v=e.target.value; setSalary(v); const p=parseMoneyKM(v); setSalaryRaw(p!=null?String(p):'') }
   const handleDown   = e => { const v=e.target.value; setDown(v);   const p=parseMoneyKM(v); setDownRaw(p!=null?String(p):'') }
   const handleExistingDebt = e => { const v=e.target.value; setExistingDebt(v); const p=parseMoneyKM(v); setExistingDebtRaw(p!=null?String(p):'') }
+  const handleCoBorrowerIncome = e => { const v=e.target.value; setCoBorrowerIncome(v); const p=parseMoneyKM(v); setCoBorrowerIncomeRaw(p!=null?String(p):'') }
   const isReady = salaryRaw && downRaw && effCarA && (mode==='single' || effCarB)
   // Garage saves rely on IDs to restore new-car selections — used-car
   // scenarios (manually entered, not persisted) can't round-trip through
@@ -371,8 +396,50 @@ export default function DriveReadyPage() {
                   hint="Other loans, credit cards, etc. — counted against the bank's 55% TDSR limit alongside this car's instalment"/>
               </div>
 
+              <div style={{marginTop:16}}>
+                <button
+                  type="button" onClick={() => setIsJointCarLoan(j => !j)} aria-pressed={isJointCarLoan}
+                  style={{
+                    display:'flex',alignItems:'center',gap:8,padding:'9px 14px',
+                    background:isJointCarLoan?C.accentBg:C.bg,border:`1.5px solid ${isJointCarLoan?C.accent:C.border}`,
+                    borderRadius:100,cursor:'pointer',fontSize:C.xs,fontWeight:700,
+                    color:isJointCarLoan?C.accent:C.muted,fontFamily:C.fontBody,
+                  }}
+                >
+                  {isJointCarLoan ? '✓ ' : ''} This is a joint car loan
+                </button>
+                {isJointCarLoan && (
+                  <div style={{marginTop:12,maxWidth:340}}>
+                    <div style={{fontSize:C.sm,fontWeight:600,color:C.primary,marginBottom:7}}>How&apos;s your share worked out?</div>
+                    <Segmented
+                      value={carShareMode}
+                      onChange={setCarShareMode}
+                      options={[{value:'income',label:'By income'},{value:'manual',label:'Manual %'}]}
+                    />
+                    {carShareMode === 'income' ? (
+                      <div style={{marginTop:10}}>
+                        <MoneyInput id="co-borrower-income" label="Co-borrower's monthly gross income" value={coBorrowerIncome} onChange={handleCoBorrowerIncome}
+                          hint="Your share of the instalment = your income ÷ (your income + theirs) — the same income-weighted apportionment a bank uses on a joint TDSR assessment."/>
+                        {dSalary > 0 && (
+                          <p style={{marginTop:8,fontSize:C.xs,color:C.muted,lineHeight:1.5}}>
+                            Your share: <strong style={{color:C.accent,fontFamily:C.fontMono}}>{carSharePct.toFixed(1)}%</strong> of this loan&apos;s instalment counts against your own TDSR.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{marginTop:10,maxWidth:160}}>
+                        <PercentInput id="manual-car-share-pct" label="Your share" value={manualCarSharePctRaw} onChange={e => setManualCarSharePctRaw(e.target.value)}/>
+                      </div>
+                    )}
+                    <p style={{marginTop:10,fontSize:C.xs,color:C.muted,lineHeight:1.5}}>
+                      The instalment itself doesn&apos;t change — this only affects how much of it counts against YOUR own TDSR limit below, since your co-borrower services the rest with their own income.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <SectionDivider label="Your budget range"/>
-              <AffordabilityCeilingCard salary={dSalary} down={dDown} tenure={dTenure} existingDebt={dExistingDebt}/>
+              <AffordabilityCeilingCard salary={dSalary} down={dDown} tenure={dTenure} existingDebt={dExistingDebt} mySharePct={carSharePct}/>
 
               <SectionDivider label="Loan tenure"/>
               <div style={{marginBottom:26}}>
@@ -420,7 +487,7 @@ export default function DriveReadyPage() {
                   </div>
                   {conditionA === 'new' ? (
                     <CarPicker value={carA} onChange={c => { setCarA(c); setCustomPriceA(''); setCalculated(false) }} slot="A"
-                      ceiling={calcCeiling(dSalary, dDown, dTenure, dExistingDebt)} down={dDown}
+                      ceiling={calcCeiling(dSalary, dDown, dTenure, dExistingDebt, carSharePct)} down={dDown}
                       allCars={allCars} top5Cars={top5Cars} coeData={liveCOE}
                       customPrice={customPriceA} onCustomPrice={v => { setCustomPriceA(v); setCalculated(false) }}/>
                   ) : (
@@ -443,7 +510,7 @@ export default function DriveReadyPage() {
                     </div>
                     {conditionB === 'new' ? (
                       <CarPicker value={carB} onChange={c => { setCarB(c); setCustomPriceB(''); setCalculated(false) }} slot="B"
-                        ceiling={calcCeiling(dSalary, dDown, dTenure, dExistingDebt)} down={dDown}
+                        ceiling={calcCeiling(dSalary, dDown, dTenure, dExistingDebt, carSharePct)} down={dDown}
                         allCars={allCars} top5Cars={top5Cars} coeData={liveCOE}
                         customPrice={customPriceB} onCustomPrice={v => { setCustomPriceB(v); setCalculated(false) }}/>
                     ) : (

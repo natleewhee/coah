@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { C, SGD } from '@/lib/drive/theme'
 import { calcCeiling } from '@/lib/drive/calc'
 
-export function AffordabilityCeilingCard({ salary, down, tenure, existingDebt = 0 }) {
-  const ceiling = calcCeiling(salary, down, tenure, existingDebt)
+export function AffordabilityCeilingCard({ salary, down, tenure, existingDebt = 0, mySharePct = 100 }) {
+  const ceiling = calcCeiling(salary, down, tenure, existingDebt, mySharePct)
   const [visible, setVisible] = useState(false)
   const shouldShow = !!(salary && down)
   const [prevShouldShow, setPrevShouldShow] = useState(shouldShow)

@@ -5,7 +5,7 @@ import {
   calcARF, parfPct, calcPARF, calcCOERebate, isPureEV, calcNetARF,
   getCOEPremium, calcGovtCosts, calcPriceGap, calcDepr, calc, calcCeiling,
   isCoeFallbackStale, PARF_CAP, TDSR_LIMIT, COE_FALLBACK, COE_FALLBACK_AS_OF,
-  omvToLtv, minDownFor,
+  omvToLtv, minDownFor, resolveJointSharePct,
 } from './calc.js'
 
 function approx(a, b, eps = 0.5) {
@@ -377,4 +377,50 @@ test('minDownFor: exact minimum is not a fraction of a cent short (float-safety 
   const minDown = minDownFor(200000, 70)
   assert.equal(minDown, 60000)
   assert.ok(60000 >= minDown - 0.005)
+})
+
+// ─── Joint loans / TDSR apportionment ────────────────────────────────────
+
+test('resolveJointSharePct: income mode splits proportionally to gross income', () => {
+  approx(resolveJointSharePct('income', 6000, 4000, null), 60, 0.01)
+  approx(resolveJointSharePct('income', 4000, 4000, null), 50, 0.01)
+  approx(resolveJointSharePct('income', 4000, 6000, null), 40, 0.01)
+})
+
+test('resolveJointSharePct: income mode with a zero/missing co-borrower income defaults to 100 (not a joint loan)', () => {
+  assert.equal(resolveJointSharePct('income', 6000, 0, null), 100)
+  assert.equal(resolveJointSharePct('income', 0, 0, null), 100)
+})
+
+test('resolveJointSharePct: manual mode uses the given percentage directly, clamped to 100', () => {
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, 30), 30)
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, 150), 100)
+})
+
+test('resolveJointSharePct: manual mode with a zero/invalid percentage defaults to 100', () => {
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, 0), 100)
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, NaN), 100)
+})
+
+test('calc: a joint loan counts only your share of the instalment toward your TDSR', () => {
+  const solo = calc(6000, 60_000, 7, CAR)
+  const joint = calc(6000, 60_000, 7, CAR, null, 0, 50)
+  assert.equal(solo.monthly, joint.monthly) // the instalment itself is unaffected
+  approx(joint.myMonthlyShare, solo.monthly * 0.5)
+  approx(joint.tdsr, solo.tdsr * 0.5)
+})
+
+test('calc: mySharePct defaults to 100 (unchanged behavior for a non-joint loan)', () => {
+  const withDefault = calc(6000, 60_000, 7, CAR)
+  const explicit100 = calc(6000, 60_000, 7, CAR, null, 0, 100)
+  assert.equal(withDefault.mySharePct, 100)
+  assert.equal(withDefault.myMonthlyShare, withDefault.monthly)
+  assert.deepEqual(withDefault, explicit100)
+})
+
+test('calcCeiling: a joint loan affords a proportionally higher full instalment for the same personal TDSR budget', () => {
+  const solo = calcCeiling(6000, 60_000, 7)
+  const joint = calcCeiling(6000, 60_000, 7, 0, 50) // your TDSR budget now only has to cover half the instalment
+  approx(joint.maxMonthlyTdsr, solo.maxMonthlyTdsr * 2)
+  assert.ok(joint.catA >= solo.catA)
 })

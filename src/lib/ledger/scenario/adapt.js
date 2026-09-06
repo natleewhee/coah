@@ -33,7 +33,15 @@ export const EMPTY_POSITION = {
   cpfOa: '', cpfSa: '', cpfMa: '',
   investments: '', cash: '',
   propertyValue: '', mortgageBalance: '', mortgageRate: '', mortgageYearsLeft: '',
+  // Your share (0-100) of a JOINT mortgage's instalment, for TDSR purposes
+  // only — blank means "not joint, it's all yours" (100%). This is a
+  // lighter-weight manual-% version of HouseMuch's own income-weighted
+  // joint-loan support (src/app/house/page.js), for someone typing
+  // numbers directly into the planner without having used HouseMuch.
+  mortgageSharePct: '',
   carValue: '', loansMonthly: '', loansYearsLeft: '',
+  // Same as mortgageSharePct, for the car/other-loans line.
+  carSharePct: '',
 }
 
 // Pre-fill the position editor from whatever the other tools last synced.
