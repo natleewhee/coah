@@ -397,9 +397,16 @@ test('resolveJointSharePct: manual mode uses the given percentage directly, clam
   assert.equal(resolveJointSharePct('manual', 6000, 4000, 150), 100)
 })
 
-test('resolveJointSharePct: manual mode with a zero/invalid percentage defaults to 100', () => {
-  assert.equal(resolveJointSharePct('manual', 6000, 4000, 0), 100)
+test('resolveJointSharePct: manual mode treats an explicit 0% as a valid share, not "unset"', () => {
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, 0), 0)
+})
+
+test('resolveJointSharePct: manual mode with an unset/invalid percentage defaults to 100', () => {
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, null), 100)
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, undefined), 100)
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, ''), 100)
   assert.equal(resolveJointSharePct('manual', 6000, 4000, NaN), 100)
+  assert.equal(resolveJointSharePct('manual', 6000, 4000, -5), 100)
 })
 
 test('calc: a joint loan counts only your share of the instalment toward your TDSR', () => {
@@ -423,4 +430,18 @@ test('calcCeiling: a joint loan affords a proportionally higher full instalment 
   const joint = calcCeiling(6000, 60_000, 7, 0, 50) // your TDSR budget now only has to cover half the instalment
   approx(joint.maxMonthlyTdsr, solo.maxMonthlyTdsr * 2)
   assert.ok(joint.catA >= solo.catA)
+})
+
+test('calc: an explicit 0% share means none of the instalment counts against your TDSR', () => {
+  const zero = calc(6000, 60_000, 7, CAR, null, 0, 0)
+  assert.equal(zero.mySharePct, 0)
+  assert.equal(zero.myMonthlyShare, 0)
+  assert.equal(zero.tdsr, 0)
+})
+
+test('calcCeiling: an explicit 0% share removes the TDSR limit entirely (comfort limit binds instead)', () => {
+  const zero = calcCeiling(6000, 60_000, 7, 0, 0)
+  assert.equal(zero.maxMonthlyTdsr, Infinity)
+  assert.equal(zero.maxMonthly, zero.maxMonthlyComfort)
+  assert.equal(zero.tdsrBinding, false)
 })

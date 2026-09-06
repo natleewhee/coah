@@ -82,7 +82,7 @@ export function calcUsed(salary, down, tenure, usedCar, liveCOE = null, existing
   existingDebt = Number(existingDebt)
   if (!Number.isFinite(existingDebt) || existingDebt < 0) existingDebt = 0
   mySharePct = Number(mySharePct)
-  if (!Number.isFinite(mySharePct) || mySharePct <= 0 || mySharePct > 100) mySharePct = 100
+  if (!Number.isFinite(mySharePct) || mySharePct < 0 || mySharePct > 100) mySharePct = 100
   if (!usedCar || !Number.isFinite(salary) || !Number.isFinite(down) || !Number.isFinite(tenure)) return null
   if (salary <= 0 || down <= 0 || tenure < 1) return null
   if (!Number.isFinite(usedCar.price) || usedCar.price <= 0) return null

@@ -210,7 +210,7 @@ export default function DriveReadyPage() {
   const dCoBorrowerIncome = useDebounce(parseInt(coBorrowerIncomeRaw||'0', 10), 120)
   const dTenure = useDebounce(tenure, 80)
   const carSharePct = isJointCarLoan
-    ? resolveJointSharePct(carShareMode, dSalary, dCoBorrowerIncome, parseInt(manualCarSharePctRaw||'0', 10))
+    ? resolveJointSharePct(carShareMode, dSalary, dCoBorrowerIncome, manualCarSharePctRaw === '' ? null : parseInt(manualCarSharePctRaw, 10))
     : 100
 
   // Pass live COE to calc so it uses real premiums when available
