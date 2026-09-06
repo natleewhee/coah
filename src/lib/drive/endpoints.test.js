@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { COE_ENDPOINT, CARS_ENDPOINT, CAR_CATALOG_ENDPOINT, COE_HISTORY_ENDPOINT } from './endpoints.js'
+import { COE_ENDPOINT, CAR_CATALOG_ENDPOINT, COE_HISTORY_ENDPOINT } from './endpoints.js'
 
 // These routes live at src/app/drive/api/**, so their URLs are /drive/api/*.
 // They were previously fetched as '/api/coe' and '/api/cars', which 404'd —
@@ -12,7 +12,6 @@ import { COE_ENDPOINT, CARS_ENDPOINT, CAR_CATALOG_ENDPOINT, COE_HISTORY_ENDPOINT
 // the calculator used its fallback constants forever.
 test('endpoints are under /drive/api, matching the App Router route paths', () => {
   assert.equal(COE_ENDPOINT, '/drive/api/coe')
-  assert.equal(CARS_ENDPOINT, '/drive/api/cars')
   assert.equal(CAR_CATALOG_ENDPOINT, '/drive/api/car-catalog')
   assert.equal(COE_HISTORY_ENDPOINT, '/drive/api/coe-history')
 })

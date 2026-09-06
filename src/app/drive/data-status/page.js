@@ -2,23 +2,27 @@
 
 // src/app/drive/data-status/page.js
 //
-// "Is the live LTA data actually working?" — one page that answers it
-// plainly.
+// "Is the live COE data actually working, and how fresh are car prices?"
+// — one page that answers both plainly.
 //
-// DriveReady degrades gracefully when live data is unavailable (hardcoded
-// COE constants, cars.json prices), which is good for users but means a
-// broken feed looks identical to a working one from the calculator. This
-// page exists so the answer is one click away instead of a code read: it
-// calls both routes and reports their `status`/`reason` codes verbatim.
+// COE premiums are fetched live, per request, from data.gov.sg's public
+// mirror of LTA's own dataset — no API key involved, so there is nothing
+// secret to withhold here. This page calls that route directly and
+// reports its `status`/`reason` code verbatim.
 //
-// COE premiums come from data.gov.sg's public mirror of LTA's own dataset —
-// no API key involved, so there is nothing secret to withhold here. Car
-// prices come from a public OneMotoring PDF, also keyless.
+// Car prices are NOT fetched live per request — DriveReady used to do
+// that (a server-side fetch of LTA's Car Cost Update PDF on every visit),
+// but onemotoring.lta.gov.sg reliably blocked that kind of traffic (no
+// browser-like headers, a shared serverless IP range) and it never
+// actually worked in production. Prices now come from the catalog route,
+// refreshed weekly by .github/workflows/refresh-data.yml running the same
+// PDF parser from a GitHub Actions runner instead — this page reports
+// that catalog's source and freshness rather than a live/dead verdict.
 
 import { useEffect, useState } from 'react'
 import ShellHeader from '@/components/shared/ShellHeader'
 import { COE_FALLBACK, COE_FALLBACK_AS_OF } from '@/lib/drive/calc'
-import { COE_ENDPOINT, CARS_ENDPOINT } from '@/lib/drive/endpoints'
+import { COE_ENDPOINT, CAR_CATALOG_ENDPOINT } from '@/lib/drive/endpoints'
 import { C } from '@/lib/drive/theme'
 
 // The site is permanently dark (see the header comment in globals.css —
@@ -58,16 +62,13 @@ const COE_STATES = {
   network_error:  { tone: BAD,  label: 'Unreachable',    fix: 'Could not reach data.gov.sg at all. Check outbound network access from your deployment.' },
 }
 
-const CARS_STATES = {
-  lta_pdf:       { tone: OK,   label: 'Working',            fix: null },
-  extract_failed:{ tone: BAD,  label: 'Cannot read PDF',    fix: 'The PDF downloaded but no text could be extracted. extractPdfText() in src/lib/drive/lta-parse.js now inflates /FlateDecode content streams (the earlier known-bug case), so this now most likely means the PDF uses a filter chain it does not support (e.g. ASCII85Decode before FlateDecode), or the LTA table layout has drifted from what parseLTARows() expects.' },
-  pdf_not_found: { tone: BAD,  label: 'PDF not found (404)',fix: 'None of the last several months\' filenames exist. getPdfNumbers() extrapolates from a confirmed anchor (M032 = June 2026, +1/month) — if every recent guess 404s, LTA has likely renamed or restructured the release rather than just running behind, and the anchor needs re-confirming against the live directory.' },
-  http_error:    { tone: WARN, label: 'OneMotoring error',  fix: 'OneMotoring returned an unexpected status. Retry later.' },
-  network_error: { tone: BAD,  label: 'Unreachable',        fix: 'Could not reach onemotoring.lta.gov.sg. Check outbound network access from your deployment.' },
-  parse_thin:    { tone: WARN, label: 'Too few rows parsed',fix: 'Text extracted but almost no table rows matched — the PDF layout has likely changed and parseLTARows() needs updating.' },
-  parse_error:   { tone: BAD,  label: 'Parser threw',       fix: 'Text extracted but parsing threw. See the detail below.' },
-  unknown:       { tone: BAD,  label: 'Failed',             fix: null },
+const CATALOG_STATES = {
+  supabase:     { tone: OK,   label: 'Supabase',       fix: null },
+  'bundled-json': { tone: OK, label: 'Bundled snapshot', fix: null },
+  unknown:      { tone: BAD,  label: 'Failed',          fix: 'The catalog route did not return a recognised source — check /drive/api/car-catalog directly.' },
 }
+
+const STALE_CATALOG_AFTER_DAYS = 14 // refreshed weekly; two missed cycles is worth flagging
 
 function Dot({ tone }) {
   return (
@@ -137,7 +138,7 @@ export default function DataStatusPage() {
         .then(r => r.json().catch(() => ({ status: 'network_error', reason: 'network_error', detail: `Non-JSON response (HTTP ${r.status})` })))
         .catch(err => ({ status: 'network_error', reason: 'network_error', detail: `Request failed: ${err.message}` }))
 
-    Promise.all([grab(COE_ENDPOINT), grab(CARS_ENDPOINT)]).then(([c, k]) => {
+    Promise.all([grab(COE_ENDPOINT), grab(CAR_CATALOG_ENDPOINT)]).then(([c, k]) => {
       if (cancelled) return
       setCoe(c)
       setCars(k)
@@ -147,17 +148,20 @@ export default function DataStatusPage() {
   }, [tick])
 
   const coeState = COE_STATES[coe?.status] ?? COE_STATES.network_error
-  const carsReason = cars?.source === 'lta_pdf' ? 'lta_pdf' : (cars?.reason || 'unknown')
-  let carsState = CARS_STATES[carsReason] ?? CARS_STATES.unknown
-  const carsLive = cars?.source === 'lta_pdf'
-  // A live parse that matched almost nothing is not "Working" — /drive
-  // already shows an amber "this month's update looks incomplete" banner
-  // for it, and a green tick here would contradict that banner.
-  if (carsLive && cars?.lowCoverage) {
+  let carsState = CATALOG_STATES[cars?.source] ?? CATALOG_STATES.unknown
+  // Measured against the response's own `checkedAt` (server-generated at
+  // fetch time), not Date.now() — calling that impure function directly
+  // during render is a React purity violation, and there's no reason to
+  // when the fetch already carries a timestamp precise enough for a
+  // days-old count.
+  const carsStaleDays = (cars?.updatedAt && cars?.checkedAt)
+    ? Math.floor((new Date(cars.checkedAt).getTime() - new Date(cars.updatedAt).getTime()) / 86400000)
+    : null
+  if (carsState.tone === OK && carsStaleDays !== null && carsStaleDays > STALE_CATALOG_AFTER_DAYS) {
     carsState = {
       tone: WARN,
-      label: 'Partial',
-      fix: `Only ${cars.matchedCars} cars matched out of ${cars.rowsFound} parsed rows (below MIN_COVERAGE). The LTA PDF's model names have likely drifted — MATCH_TERMS in src/lib/drive/lta-parse.js needs updating.`,
+      label: 'Stale',
+      fix: `Car prices are ${carsStaleDays} days old — the weekly refresh (.github/workflows/refresh-data.yml) should keep this under ~7. Check whether its auto-merge is going through: github.com/natleewhee/natdtm/pulls?q=is:pr+refresh+car`,
     }
   }
 
@@ -175,13 +179,14 @@ export default function DataStatusPage() {
           fontFamily: 'var(--l-font-display)', fontWeight: 600, fontSize: 'clamp(24px,3.2vw,32px)',
           lineHeight: 1.15, margin: '0 0 12px',
         }}>
-          Is the LTA data feeding into the calculator?
+          Is the data feeding into the calculator fresh?
         </h1>
         <p style={{ color: SUB, fontSize: 14.5, lineHeight: 1.6, margin: '0 0 28px', maxWidth: '62ch' }}>
-          DriveReady keeps working when live data is unreachable — it falls back to saved prices
-          and hardcoded COE constants. That is good for visitors but hides breakage, so this page
-          calls both routes directly and reports exactly what came back. Neither feed needs an
-          API key, so there is nothing secret to withhold here.
+          COE premiums are fetched live on every visit; car prices are refreshed weekly instead of
+          live per request (see why in the card below) and fall back to hardcoded COE constants or
+          the bundled price snapshot when needed. That is good for visitors but hides breakage, so
+          this page calls both routes directly and reports exactly what came back. Neither feed
+          needs an API key, so there is nothing secret to withhold here.
         </p>
 
         {loading && <p style={{ fontSize: 14, color: SUB }}>Checking both feeds…</p>}
@@ -213,33 +218,16 @@ export default function DataStatusPage() {
             </Card>
 
             <Card
-              title="Car prices — LTA Car Cost Update PDF"
-              subtitle="A public PDF from OneMotoring. No API key involved. Powers the official selling prices per model."
+              title="Car prices — weekly catalog refresh"
+              subtitle="Refreshed weekly from LTA's Car Cost Update PDF by a GitHub Actions job, not fetched live per request (that reliably got blocked by onemotoring.lta.gov.sg). Powers the official selling prices per model."
               tone={carsState.tone}
               verdict={carsState.label}
             >
-              <Row label="Source" value={carsLive ? 'Live LTA PDF' : 'Saved prices (cars.json)'} mono />
-              {cars?.pdfUsed && <Row label="PDF used" value={cars.pdfUsed} mono />}
-              {carsLive && (
-                <>
-                  <Row label="Rows parsed" value={cars.rowsFound} mono />
-                  <Row label="Cars matched" value={`${cars.matchedCars}${cars.lowCoverage ? ' — low coverage' : ''}`} mono />
-                  <Row label="Fetched" value={fmtWhen(cars.scrapedAt)} />
-                </>
-              )}
-              {!carsLive && Array.isArray(cars?.attempts) && cars.attempts.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontFamily: 'var(--l-font-mono)', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: SUB, margin: '0 0 6px' }}>
-                    Attempts
-                  </p>
-                  {cars.attempts.map((a) => (
-                    <p key={a.pdf} style={{ fontSize: 12.5, color: SUB, margin: '0 0 5px', lineHeight: 1.5 }}>
-                      <span style={{ fontFamily: 'var(--l-font-mono)', fontWeight: 700 }}>{a.pdf}</span>
-                      {' — '}{a.ok ? 'ok' : `${a.reason}: ${a.detail}`}
-                    </p>
-                  ))}
-                </div>
-              )}
+              <Row label="Source" value={cars?.source === 'supabase' ? 'Supabase' : 'Bundled snapshot (cars.json)'} mono />
+              <Row label="Prices as of" value={fmtWhen(cars?.updatedAt)} />
+              {carsStaleDays !== null && <Row label="Age" value={`${carsStaleDays} day${carsStaleDays !== 1 ? 's' : ''}`} mono />}
+              <Row label="Checked" value={fmtWhen(cars?.checkedAt)} />
+              {cars?.detail && <p style={{ fontSize: 12.5, color: SUB, margin: '12px 0 0', lineHeight: 1.55 }}>{cars.detail}</p>}
               <FixNote text={carsState.fix} />
             </Card>
 

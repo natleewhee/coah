@@ -168,9 +168,6 @@ export function CarPicker({ value, onChange, slot, ceiling, down, allCars = [], 
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
                     <span style={{fontSize:C.sm,fontFamily:C.fontMono,fontWeight:700,color:sel?C.primary:C.muted}}>{SGD(car.price)}</span>
-                    {car.priceVerified === false && (
-                      <span title="Price not in LTA monthly data — using last known price" style={{fontSize:C.xs,fontWeight:700,color:C.amberText,background:C.amberBg,border:`1px solid ${C.amber}44`,borderRadius:100,padding:'2px 7px'}}>⚠️</span>
-                    )}
                     <span style={{fontSize:C.xs,fontWeight:700,color:t.color,background:t.bg,border:`1px solid ${t.color}44`,borderRadius:100,padding:'2px 7px'}}>{t.display}</span>
                     {sel && <div style={{width:6,height:6,borderRadius:'50%',background:C.accent,boxShadow:`0 0 0 2px ${C.accentBg}`}}/>}
                   </div>
@@ -212,7 +209,7 @@ export function CarPicker({ value, onChange, slot, ceiling, down, allCars = [], 
                         </div>
                         <div style={{flexShrink:0,textAlign:'right'}}>
                           <div style={{fontSize:C.sm,fontFamily:C.fontMono,fontWeight:700,color:sel?C.primary:C.text}}>
-                            {SGD(car.price)}{car.priceVerified === false ? ' ⚠️' : ''}
+                            {SGD(car.price)}
                           </div>
                           <span style={{fontSize:C.xs,fontWeight:700,color:t.color,background:t.bg,borderRadius:100,padding:'1px 7px'}}>{t.display}</span>
                         </div>
@@ -239,12 +236,6 @@ export function CarPicker({ value, onChange, slot, ceiling, down, allCars = [], 
             {value.top5 && <span style={{marginLeft:'auto',fontSize:C.xs,fontWeight:700,color:C.accent,background:C.surface,border:`1px solid ${C.accent}55`,borderRadius:100,padding:'2px 10px'}}>#{value.rank} in SG</span>}
           </div>
           {value.desc && <p style={{fontSize:C.sm,color:C.text,lineHeight:1.6,marginBottom:8}}>{value.desc}</p>}
-          {value.priceVerified === false && (
-            <div style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:C.amberBg,borderRadius:C.r,marginBottom:8,border:`1px solid ${C.amber}44`}}>
-              <span style={{fontSize:12}}>⚠️</span>
-              <span style={{fontSize:C.xs,color:C.amberText}}>Not in this month&apos;s LTA update — using our last saved price for this model.</span>
-            </div>
-          )}
           <div style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:8}}>
             <span style={{fontSize:C.xs,color:C.muted}}>Max loan: <strong style={{color:C.primary}}>{value.loanCap}%</strong></span>
             <span style={{fontSize:C.xs,color:C.muted}}>Min. downpayment: <strong style={{color:C.primary}}>{SGD(value.price*(1-value.loanCap/100))}</strong></span>
