@@ -221,8 +221,9 @@ export default function MyLedgerPage() {
     // Only scales what counts against YOUR TDSR — the instalment itself,
     // shown elsewhere, is unaffected.
     const shareFraction = (pct) => {
+      if (pct === '' || pct == null) return 1
       const n = num(pct)
-      return n > 0 && n <= 100 ? n / 100 : 1
+      return Number.isFinite(n) && n >= 0 && n <= 100 ? n / 100 : 1
     }
     const myMortgageInstalment = mortgageInstalment * shareFraction(p.mortgageSharePct)
     const myLoansMonthly = num(p.loansMonthly) * shareFraction(p.carSharePct)

@@ -14,8 +14,8 @@
  * @param {'income'|'manual'} mode - 'income' computes from `myIncome`/`coBorrowerIncome`; 'manual' uses `manualPct` directly.
  * @param {number} myIncome - Your gross monthly income, only used in 'income' mode.
  * @param {number} coBorrowerIncome - Co-borrower's gross monthly income, only used in 'income' mode.
- * @param {number} manualPct - Your share as a 0-100 percentage, only used in 'manual' mode.
- * @returns {number} Your share of the instalment, clamped to (0, 100]. Defaults to 100 (not a joint loan) on invalid input.
+ * @param {number|null} manualPct - Your share as a 0-100 percentage, only used in 'manual' mode. `null`/`undefined` means "not entered" (defaults to 100); an explicit `0` is a valid, deliberate share.
+ * @returns {number} Your share of the instalment, clamped to [0, 100]. Defaults to 100 (not a joint loan) when unset or invalid.
  */
 export function resolveJointSharePct(mode, myIncome, coBorrowerIncome, manualPct) {
   if (mode === 'income') {
@@ -25,7 +25,8 @@ export function resolveJointSharePct(mode, myIncome, coBorrowerIncome, manualPct
     if (combined <= 0) return 100
     return Math.min(100, Math.max(0.01, (my / combined) * 100))
   }
+  if (manualPct === null || manualPct === undefined || manualPct === '') return 100
   const pct = Number(manualPct)
-  if (!Number.isFinite(pct) || pct <= 0) return 100
+  if (!Number.isFinite(pct) || pct < 0) return 100
   return Math.min(100, pct)
 }

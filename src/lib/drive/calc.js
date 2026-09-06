@@ -334,7 +334,7 @@ export function calc(salary, down, tenure, car, liveCOE = null, existingDebt = 0
   existingDebt = Number(existingDebt)
   if (!Number.isFinite(existingDebt) || existingDebt < 0) existingDebt = 0
   mySharePct = Number(mySharePct)
-  if (!Number.isFinite(mySharePct) || mySharePct <= 0 || mySharePct > 100) mySharePct = 100
+  if (!Number.isFinite(mySharePct) || mySharePct < 0 || mySharePct > 100) mySharePct = 100
   if (!car || !Number.isFinite(salary) || !Number.isFinite(down) || !Number.isFinite(tenure)) return null
   if (salary <= 0 || down <= 0 || tenure < 1 || tenure > 10) return null
   if (!Number.isFinite(car.price) || car.price <= 0) return null
@@ -413,7 +413,7 @@ export function calcCeiling(salary, down, tenure, existingDebt = 0, mySharePct =
   existingDebt = Number(existingDebt)
   if (!Number.isFinite(existingDebt) || existingDebt < 0) existingDebt = 0
   mySharePct = Number(mySharePct)
-  if (!Number.isFinite(mySharePct) || mySharePct <= 0 || mySharePct > 100) mySharePct = 100
+  if (!Number.isFinite(mySharePct) || mySharePct < 0 || mySharePct > 100) mySharePct = 100
   if (!salary || salary <= 0 || !tenure || tenure < 1) return null
   const takeHome = salary * 0.80
   const maxMonthlyComfort = takeHome * 0.30
