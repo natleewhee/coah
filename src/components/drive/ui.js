@@ -19,13 +19,13 @@ export function SectionDivider({ label }) {
 // share-mode picker.
 export function Segmented({ options, value, onChange }) {
   return (
-    <div style={{display:'inline-flex',background:C.surface,border:`1.5px solid ${C.border}`,borderRadius:C.r,padding:3,gap:2}}>
+    <div style={{display:'inline-flex',background:C.surface,border:`1.5px solid ${C.borderControl}`,borderRadius:C.r,padding:3,gap:2}}>
       {options.map(opt => (
         <button
           key={opt.value} type="button" onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           style={{
-            padding:'7px 16px',fontSize:C.xs,fontWeight:700,letterSpacing:'0.06em',
+            padding:'7px 16px',minHeight:38,fontSize:C.xs,fontWeight:700,letterSpacing:'0.06em',
             textTransform:'uppercase',cursor:'pointer',borderRadius:6,border:'none',
             fontFamily:C.fontBody,background:value===opt.value?C.ndtm:'transparent',
             color:value===opt.value?'#fff':C.muted,transition:'all 0.2s',
@@ -50,7 +50,7 @@ export function PercentInput({ id, label, hint, value, onChange, step = '0.01' }
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{
             width:'100%',boxSizing:'border-box',background:C.surface,
-            border:`1.5px solid ${focused ? C.accent : C.border}`,borderRadius:C.r,
+            border:`1.5px solid ${focused ? C.accent : C.borderControl}`,borderRadius:C.r,
             padding:'11px 32px 11px 12px',color:C.primary,fontSize:C.lg,
             fontFamily:C.fontMono,fontWeight:500,outline:'none',
             boxShadow:focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -76,7 +76,7 @@ export function MoneyInput({ id, label, hint, value, onChange }) {
   // focused and only reformatted once typing is done.
   const handleBlur = e => {
     setFocused(false)
-    e.target.style.borderColor = value ? C.accent : C.border
+    e.target.style.borderColor = value ? C.accent : C.borderControl
     e.target.style.boxShadow = 'none'
     const parsed = parseMoneyKM(value)
     if (parsed != null && String(parsed) !== String(value ?? '')) {
@@ -92,7 +92,7 @@ export function MoneyInput({ id, label, hint, value, onChange }) {
           aria-describedby={hintId}
           onFocus={e => { setFocused(true); e.target.style.borderColor=C.accent; e.target.style.boxShadow=`0 0 0 3px ${C.accentBg}` }}
           onBlur={handleBlur}
-          style={{width:'100%',background:C.surface,border:`1.5px solid ${value?C.accent:C.border}`,borderRadius:C.r,padding:'11px 12px 11px 36px',color:C.primary,fontSize:C.lg,fontFamily:C.fontMono,fontWeight:500,outline:'none',transition:'border-color 0.2s,box-shadow 0.2s'}}/>
+          style={{width:'100%',background:C.surface,border:`1.5px solid ${value?C.accent:C.borderControl}`,borderRadius:C.r,padding:'11px 12px 11px 36px',color:C.primary,fontSize:C.lg,fontFamily:C.fontMono,fontWeight:500,outline:'none',transition:'border-color 0.2s,box-shadow 0.2s'}}/>
       </div>
       {hint && <p id={hintId} style={{marginTop:5,fontSize:C.xs,color:C.muted,lineHeight:1.5}}>{hint}</p>}
     </div>

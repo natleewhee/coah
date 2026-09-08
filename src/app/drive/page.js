@@ -457,7 +457,7 @@ export default function DriveReadyPage() {
                   {[1,2,3,4,5,6,7].map(y => (
                     <button key={y} type="button" onClick={() => setTenure(y)}
                       aria-label={`Set loan tenure to ${y} year${y>1?'s':''}`} aria-pressed={tenure===y}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer',background:'none',border:'none',padding:'4px 2px'}}>
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,cursor:'pointer',background:'none',border:'none',padding:'4px 2px',minWidth:36,minHeight:44}}>
                       <div aria-hidden="true" style={{width:1,height:6,background:tenure===y?C.accent:C.border}}/>
                       <span style={{fontSize:C.xs,fontFamily:C.fontMono,color:tenure===y?C.accent:C.faint,fontWeight:tenure===y?700:400}}>{y}</span>
                     </button>

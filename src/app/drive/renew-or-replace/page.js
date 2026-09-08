@@ -33,7 +33,7 @@ function MoneyInput({ label, hint, value, onChange, placeholder='0' }) {
     <div>
       <Label>{label}</Label>
       {hint && <Hint>{hint}</Hint>}
-      <div style={{display:'flex',alignItems:'center',gap:6,padding:'10px 14px',border:`1.5px solid ${focused?C.accent:C.border}`,borderRadius:C.rL,background:C.surface,boxShadow:focused?`0 0 0 3px ${C.accentBg}`:'none',transition:'all 0.15s'}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,padding:'10px 14px',border:`1.5px solid ${focused?C.accent:C.borderControl}`,borderRadius:C.rL,background:C.surface,boxShadow:focused?`0 0 0 3px ${C.accentBg}`:'none',transition:'all 0.15s'}}>
         <span style={{fontSize:C.sm,color:C.faint,flexShrink:0}}>S$</span>
         <input type="text" value={value} placeholder={placeholder}
           onChange={e=>onChange(e.target.value.replace(/[^0-9]/g,''))}

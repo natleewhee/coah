@@ -206,21 +206,21 @@ export default function FlowResults({ flow, metrics, primarySchedule, altSchedul
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
             <thead>
               <tr>
-                <th style={thStyle}>Monthly investment capacity</th>
-                <th style={thStyle}>Before FlowState</th>
-                <th style={thStyle}>With FlowState</th>
+                <th style={thStyle()}>Monthly investment capacity</th>
+                <th style={thStyle()}>Before FlowState</th>
+                <th style={thStyle()}>With FlowState</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={tdStyle}>Assumed living expenses</td>
-                <td style={{ ...tdStyle, ...tdNum, color: C.faint }}>not modeled</td>
-                <td style={{ ...tdStyle, ...tdNum, color: C.redText }}>−{SGD(flow.nodes.living.value)}</td>
+                <td style={tdStyle()}>Assumed living expenses</td>
+                <td style={{ ...tdStyle(), ...tdNum, color: C.faint }}>not modeled</td>
+                <td style={{ ...tdStyle(), ...tdNum, color: C.redText }}>−{SGD(flow.nodes.living.value)}</td>
               </tr>
               <tr>
-                <td style={{ ...tdStyle, fontWeight: 700, borderBottom: 'none' }}>Capacity handed to RetireWell</td>
-                <td style={{ ...tdStyle, ...tdNum, fontSize: 16, color: C.accentText, borderBottom: 'none' }}>{SGD(capacityBefore)}</td>
-                <td style={{ ...tdStyle, ...tdNum, fontSize: 16, color: C.greenText, borderBottom: 'none' }}>{SGD(capacityAfter)}</td>
+                <td style={{ ...tdStyle(), fontWeight: 700, borderBottom: 'none' }}>Capacity handed to RetireWell</td>
+                <td style={{ ...tdStyle(), ...tdNum, fontSize: 16, color: C.accentText, borderBottom: 'none' }}>{SGD(capacityBefore)}</td>
+                <td style={{ ...tdStyle(), ...tdNum, fontSize: 16, color: C.greenText, borderBottom: 'none' }}>{SGD(capacityAfter)}</td>
               </tr>
             </tbody>
           </table>
@@ -230,11 +230,14 @@ export default function FlowResults({ flow, metrics, primarySchedule, altSchedul
   )
 }
 
-const thStyle = {
+// Functions, not objects: `C` is mutated in place on a light/dark switch,
+// so a style object built at module scope keeps whichever mode's hex was
+// current when this file first evaluated.
+const thStyle = () => ({
   textAlign: 'left', padding: '12px 16px', borderBottom: `1px solid ${C.border}`,
   fontFamily: C.fontMono, fontSize: 10.5, letterSpacing: '0.09em', textTransform: 'uppercase', color: C.faint, fontWeight: 600,
-}
-const tdStyle = { textAlign: 'left', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }
+})
+const tdStyle = () => ({ textAlign: 'left', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, fontSize: 13.5 })
 const tdNum = { fontFamily: C.fontMono, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }
 
 function Legend({ color, label, dashed, dashLine }) {
