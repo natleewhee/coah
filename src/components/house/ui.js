@@ -37,7 +37,7 @@ export function MoneyInput({ id, label, hint, value, onChange, placeholder = '0'
           onFocus={() => setFocused(true)} onBlur={handleBlur}
           style={{
             width: '100%', boxSizing: 'border-box', background: C.surface,
-            border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+            border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
             padding: '11px 12px 11px 36px', color: C.primary, fontSize: C.lg,
             fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
             boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -62,7 +62,7 @@ export function PercentInput({ id, label, hint, value, onChange, step = '0.01' }
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{
             width: '100%', boxSizing: 'border-box', background: C.surface,
-            border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+            border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
             padding: '11px 32px 11px 12px', color: C.primary, fontSize: C.lg,
             fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
             boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -88,7 +88,7 @@ export function NumberInput({ id, label, hint, value, onChange, suffix }) {
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{
             width: '100%', boxSizing: 'border-box', background: C.surface,
-            border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+            border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
             padding: suffix ? '11px 40px 11px 12px' : '11px 12px', color: C.primary, fontSize: C.lg,
             fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
             boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -123,13 +123,13 @@ export function DateInput({ id, label, hint, value, onChange }) {
 // Two/three-way pill toggle — same visual shape as Drive's Single/Compare switch.
 export function Segmented({ options, value, onChange }) {
   return (
-    <div style={{ display: 'inline-flex', background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: C.r, padding: 3, gap: 2 }}>
+    <div style={{ display: 'inline-flex', background: C.surface, border: `1.5px solid ${C.borderControl}`, borderRadius: C.r, padding: 3, gap: 2 }}>
       {options.map(opt => (
         <button
           key={opt.value} type="button" onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           style={{
-            padding: '7px 16px', fontSize: C.xs, fontWeight: 700, letterSpacing: '0.06em',
+            padding: '7px 16px', minHeight: 38, fontSize: C.xs, fontWeight: 700, letterSpacing: '0.06em',
             textTransform: 'uppercase', cursor: 'pointer', borderRadius: 6, border: 'none',
             fontFamily: C.fontBody, background: value === opt.value ? C.ndtm : 'transparent',
             color: value === opt.value ? '#fff' : C.muted, transition: 'all 0.2s',
@@ -180,7 +180,7 @@ export function FeeInput({ id, label, hint, base, mode, onModeChange, value, onC
             onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             style={{
               width: '100%', boxSizing: 'border-box', background: C.surface,
-              border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+              border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
               padding: '11px 12px 11px 36px',
               color: C.primary, fontSize: C.lg, fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
               boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',

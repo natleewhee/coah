@@ -37,7 +37,7 @@ export function MoneyInput({ id, label, hint, value, onChange, placeholder = '0'
           onFocus={() => setFocused(true)} onBlur={handleBlur}
           style={{
             width: '100%', boxSizing: 'border-box', background: C.surface,
-            border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+            border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
             padding: '11px 12px 11px 36px', color: C.primary, fontSize: C.lg,
             fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
             boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -62,7 +62,7 @@ export function PercentInput({ id, label, hint, value, onChange, step = '0.01' }
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{
             width: '100%', boxSizing: 'border-box', background: C.surface,
-            border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+            border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
             padding: '11px 32px 11px 12px', color: C.primary, fontSize: C.lg,
             fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
             boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -88,7 +88,7 @@ export function NumberInput({ id, label, hint, value, onChange, suffix }) {
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{
             width: '100%', boxSizing: 'border-box', background: C.surface,
-            border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+            border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
             padding: suffix ? '11px 40px 11px 12px' : '11px 12px', color: C.primary, fontSize: C.lg,
             fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
             boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -114,7 +114,7 @@ export function TextInput({ id, label, hint, value, onChange, placeholder }) {
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           width: '100%', boxSizing: 'border-box', background: C.surface,
-          border: `1.5px solid ${focused ? C.accent : C.border}`, borderRadius: C.r,
+          border: `1.5px solid ${focused ? C.accent : C.borderControl}`, borderRadius: C.r,
           padding: '11px 12px', color: C.primary, fontSize: C.base,
           fontFamily: C.fontMono, fontWeight: 500, outline: 'none',
           boxShadow: focused ? `0 0 0 3px ${C.accentBg}` : 'none',
@@ -147,16 +147,19 @@ export function SelectInput({ id, label, value, onChange, options }) {
 }
 
 // The enough / tight / short verdict pill.
+// Token NAMES, resolved against `C` at render — `C` is mutated in place on
+// a light/dark switch, so storing the hex here would freeze one mode's
+// palette into every verdict pill.
 const CHIP = {
-  'comfortably enough': { bg: C.greenBg, fg: C.greenText, label: 'Comfortably enough' },
-  tight: { bg: C.amberBg, fg: C.amberText, label: 'Tight' },
-  short: { bg: C.redBg, fg: C.redText, label: 'Short' },
-  'no-reference': { bg: C.accentBg, fg: C.muted, label: 'Set a monthly spend to see a verdict' },
+  'comfortably enough': { bg: 'greenBg', fg: 'greenText', label: 'Comfortably enough' },
+  tight: { bg: 'amberBg', fg: 'amberText', label: 'Tight' },
+  short: { bg: 'redBg', fg: 'redText', label: 'Short' },
+  'no-reference': { bg: 'accentBg', fg: 'muted', label: 'Set a monthly spend to see a verdict' },
 }
 export function VerdictChip({ read }) {
   const c = CHIP[read] || CHIP['no-reference']
   return (
-    <span style={{ display: 'inline-block', background: c.bg, color: c.fg, fontSize: C.xs, fontWeight: 700, padding: '4px 10px', borderRadius: C.r }}>
+    <span style={{ display: 'inline-block', background: C[c.bg], color: C[c.fg], fontSize: C.xs, fontWeight: 700, padding: '4px 10px', borderRadius: C.r }}>
       {c.label}
     </span>
   )
@@ -165,13 +168,13 @@ export function VerdictChip({ read }) {
 // Two/three-way pill toggle — same visual shape used across the other tools.
 export function Segmented({ options, value, onChange }) {
   return (
-    <div style={{ display: 'inline-flex', background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: C.r, padding: 3, gap: 2 }}>
+    <div style={{ display: 'inline-flex', background: C.surface, border: `1.5px solid ${C.borderControl}`, borderRadius: C.r, padding: 3, gap: 2 }}>
       {options.map(opt => (
         <button
           key={opt.value} type="button" onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           style={{
-            padding: '7px 16px', fontSize: C.xs, fontWeight: 700, letterSpacing: '0.06em',
+            padding: '7px 16px', minHeight: 38, fontSize: C.xs, fontWeight: 700, letterSpacing: '0.06em',
             textTransform: 'uppercase', cursor: 'pointer', borderRadius: 6, border: 'none',
             fontFamily: C.fontBody, background: value === opt.value ? C.ndtm : 'transparent',
             color: value === opt.value ? '#fff' : C.muted, transition: 'all 0.2s',

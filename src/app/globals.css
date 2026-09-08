@@ -39,7 +39,7 @@
   --l-surface: #221b16;
   --l-ink: #f7f1ea;
   --l-sub: #ab9a8c;
-  --l-faint: #7d6f63;
+  --l-faint: #908173;
   --l-accent: #e0763f;
   --l-accent-ink: #2b1208;
   --l-accent-bg: #2e1f16;
@@ -57,6 +57,10 @@
   --l-blue-bg: #16232e;
   --l-blue-text: #a8d0ee;
   --l-line: #3a2f27;
+  /* Form-control outline — see `borderControl` in shared/theme.js. Must
+     clear WCAG 1.4.11's 3:1 against bg AND surface; --l-line is a
+     decorative card hairline and deliberately does not. */
+  --l-control: #75655a;
 
   --l-font-display: 'Space Grotesk', 'Inter', -apple-system, sans-serif;
   --l-font-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
@@ -66,25 +70,26 @@
   --l-bg: #faf5ef;
   --l-surface: #ffffff;
   --l-ink: #2b2019;
-  --l-sub: #8a7969;
-  --l-faint: #a89686;
-  --l-accent: #c2542a;
+  --l-sub: #7e6e60;
+  --l-faint: #816d5c;
+  --l-accent: #ad4b25;
   --l-accent-ink: #fffaf6;
   --l-accent-bg: #f6e6d8;
   --l-accent-text: #8a3417;
-  --l-amber: #a97a1f;
+  --l-amber: #926a1b;
   --l-amber-bg: #f6ecd4;
   --l-amber-text: #7a5713;
   --l-red: #c94a3d;
   --l-red-bg: #fbe8e5;
   --l-red-text: #9c2f24;
-  --l-green: #2f8f5b;
+  --l-green: #2a7f51;
   --l-green-bg: #e6f5ec;
   --l-green-text: #1f6a41;
   --l-blue: #3574a8;
   --l-blue-bg: #e6f0f8;
   --l-blue-text: #204d6e;
   --l-line: #e8dccb;
+  --l-control: #9c8a76;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -398,6 +403,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   --color-bg: var(--l-bg);
   --color-surface: var(--l-surface);
   --color-border: var(--l-line);
+  --color-border-control: var(--l-control);
   --color-text: var(--l-ink);
   --color-muted: var(--l-sub);
   --color-faint: var(--l-faint);

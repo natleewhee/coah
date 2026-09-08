@@ -186,7 +186,7 @@ export function CarPicker({ value, onChange, slot, ceiling, down, allCars = [], 
             placeholder="e.g. Tesla, BYD, SUV, Cat A, hybrid…"
             aria-label={`Search all cars for slot ${slot}`}
             role="combobox" aria-expanded={showDrop} aria-autocomplete="list" aria-controls={`car-listbox-${slot}`}
-            style={{width:'100%',background:C.surface,border:`1.5px solid ${focused?C.accent:C.border}`,borderRadius:C.r,padding:'10px 32px 10px 36px',color:C.text,fontSize:C.sm,outline:'none',transition:'border-color 0.2s,box-shadow 0.2s',boxShadow:focused?`0 0 0 3px ${C.accentBg}`:'none'}}/>
+            style={{width:'100%',background:C.surface,border:`1.5px solid ${focused?C.accent:C.borderControl}`,borderRadius:C.r,padding:'10px 32px 10px 36px',color:C.text,fontSize:C.sm,outline:'none',transition:'border-color 0.2s,box-shadow 0.2s',boxShadow:focused?`0 0 0 3px ${C.accentBg}`:'none'}}/>
           {query && (
             <button type="button" onClick={() => { setQuery(''); inputRef.current?.focus() }} aria-label="Clear search"
               style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',width:40,height:40,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',color:C.faint,cursor:'pointer',fontSize:16,lineHeight:1,padding:0}}>✕</button>

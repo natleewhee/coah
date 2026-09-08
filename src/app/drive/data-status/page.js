@@ -25,16 +25,13 @@ import { COE_FALLBACK, COE_FALLBACK_AS_OF } from '@/lib/drive/calc'
 import { COE_ENDPOINT, CAR_CATALOG_ENDPOINT } from '@/lib/drive/endpoints'
 import { C } from '@/lib/drive/theme'
 
-// The site is permanently dark (see the header comment in globals.css —
-// :root[data-theme='light'] is an exact copy of the dark values, so there is
-// no light mode to degrade into). Colors come from the Drive palette rather
-// than fresh literals so this page can't drift out of sync with the rest of
-// the vertical, and so the small 12-13px label text keeps enough contrast.
-const OK = C.greenText
-const WARN = C.amberText
-const BAD = C.redText
-const LINE = C.border
-const SUB = C.muted
+// A verdict is stored as a semantic tone name, never as a color string:
+// `C` is mutated in place on a light/dark switch, so a hex captured at
+// module scope would freeze whichever mode happened to load first (and
+// `state.tone === OK` identity checks would then silently stop matching).
+// toneColor() resolves the name at render, when `C` is current.
+const TONES = { ok: 'greenText', warn: 'amberText', bad: 'redText' }
+const toneColor = (tone) => C[TONES[tone]] ?? C.muted
 
 function fmtSGD(n) {
   return typeof n === 'number' ? `S$${n.toLocaleString('en-SG')}` : '—'
@@ -55,17 +52,17 @@ function fmtWhen(iso) {
 // Each status/reason code gets a verdict tone plus the actual next action,
 // so the page says what to DO, not just that something is broken.
 const COE_STATES = {
-  live:           { tone: OK,   label: 'Working',        fix: null },
-  upstream_error: { tone: WARN, label: 'data.gov.sg error', fix: 'data.gov.sg returned an unexpected status or marked the request unsuccessful. Usually transient — retry shortly.' },
-  no_results:     { tone: WARN, label: 'No Cat A/B rows',fix: 'The dataset responded, but no row paired into a full Cat A/Cat B bidding exercise within the rows requested.' },
-  stale_data:     { tone: WARN, label: 'Stale sort?',    fix: 'The newest row found looks implausibly old, which usually means the sort parameter isn\'t being honoured — check the note above for the exact month found.' },
-  network_error:  { tone: BAD,  label: 'Unreachable',    fix: 'Could not reach data.gov.sg at all. Check outbound network access from your deployment.' },
+  live:           { tone: 'ok',   label: 'Working',        fix: null },
+  upstream_error: { tone: 'warn', label: 'data.gov.sg error', fix: 'data.gov.sg returned an unexpected status or marked the request unsuccessful. Usually transient — retry shortly.' },
+  no_results:     { tone: 'warn', label: 'No Cat A/B rows',fix: 'The dataset responded, but no row paired into a full Cat A/Cat B bidding exercise within the rows requested.' },
+  stale_data:     { tone: 'warn', label: 'Stale sort?',    fix: 'The newest row found looks implausibly old, which usually means the sort parameter isn\'t being honoured — check the note above for the exact month found.' },
+  network_error:  { tone: 'bad',  label: 'Unreachable',    fix: 'Could not reach data.gov.sg at all. Check outbound network access from your deployment.' },
 }
 
 const CATALOG_STATES = {
-  supabase:     { tone: OK,   label: 'Supabase',       fix: null },
-  'bundled-json': { tone: OK, label: 'Bundled snapshot', fix: null },
-  unknown:      { tone: BAD,  label: 'Failed',          fix: 'The catalog route did not return a recognised source — check /drive/api/car-catalog directly.' },
+  supabase:     { tone: 'ok',   label: 'Supabase',       fix: null },
+  'bundled-json': { tone: 'ok', label: 'Bundled snapshot', fix: null },
+  unknown:      { tone: 'bad',  label: 'Failed',          fix: 'The catalog route did not return a recognised source — check /drive/api/car-catalog directly.' },
 }
 
 const STALE_CATALOG_AFTER_DAYS = 14 // refreshed weekly; two missed cycles is worth flagging
@@ -74,21 +71,21 @@ function Dot({ tone }) {
   return (
     <span aria-hidden="true" style={{
       display: 'inline-block', width: 9, height: 9, borderRadius: '50%',
-      background: tone, marginRight: 8, flexShrink: 0,
+      background: toneColor(tone), marginRight: 8, flexShrink: 0,
     }} />
   )
 }
 
 function Card({ title, subtitle, tone, verdict, children }) {
   return (
-    <section style={{ border: `1px solid ${LINE}`, borderRadius: 4, padding: '20px 22px', marginBottom: 16 }}>
+    <section style={{ border: `1px solid ${C.border}`, borderRadius: 4, padding: '20px 22px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
         <h2 style={{ fontFamily: 'var(--l-font-display)', fontWeight: 600, fontSize: 17, margin: 0 }}>{title}</h2>
-        <span style={{ display: 'flex', alignItems: 'center', fontFamily: 'var(--l-font-mono)', fontSize: 12, fontWeight: 700, color: tone }}>
+        <span style={{ display: 'flex', alignItems: 'center', fontFamily: 'var(--l-font-mono)', fontSize: 12, fontWeight: 700, color: toneColor(tone) }}>
           <Dot tone={tone} />{verdict}
         </span>
       </div>
-      <p style={{ fontSize: 12.5, color: SUB, margin: '0 0 14px' }}>{subtitle}</p>
+      <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 14px' }}>{subtitle}</p>
       {children}
     </section>
   )
@@ -96,8 +93,8 @@ function Card({ title, subtitle, tone, verdict, children }) {
 
 function Row({ label, value, mono }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '7px 0', borderTop: `1px solid ${LINE}`, fontSize: 13 }}>
-      <span style={{ color: SUB }}>{label}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '7px 0', borderTop: `1px solid ${C.border}`, fontSize: 13 }}>
+      <span style={{ color: C.muted }}>{label}</span>
       <span style={{ fontFamily: mono ? 'var(--l-font-mono)' : undefined, fontWeight: mono ? 700 : 400, textAlign: 'right' }}>{value}</span>
     </div>
   )
@@ -108,9 +105,9 @@ function FixNote({ text }) {
   return (
     <p style={{
       fontSize: 12.5, lineHeight: 1.55, color: C.text, background: C.surface,
-      border: `1px solid ${LINE}`, borderRadius: 4, padding: '10px 12px', margin: '14px 0 0',
+      border: `1px solid ${C.border}`, borderRadius: 4, padding: '10px 12px', margin: '14px 0 0',
     }}>
-      <strong style={{ fontFamily: 'var(--l-font-mono)', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: SUB, display: 'block', marginBottom: 4 }}>What to do</strong>
+      <strong style={{ fontFamily: 'var(--l-font-mono)', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 4 }}>What to do</strong>
       {text}
     </p>
   )
@@ -157,9 +154,9 @@ export default function DataStatusPage() {
   const carsStaleDays = (cars?.updatedAt && cars?.checkedAt)
     ? Math.floor((new Date(cars.checkedAt).getTime() - new Date(cars.updatedAt).getTime()) / 86400000)
     : null
-  if (carsState.tone === OK && carsStaleDays !== null && carsStaleDays > STALE_CATALOG_AFTER_DAYS) {
+  if (carsState.tone === 'ok' && carsStaleDays !== null && carsStaleDays > STALE_CATALOG_AFTER_DAYS) {
     carsState = {
-      tone: WARN,
+      tone: 'warn',
       label: 'Stale',
       fix: `Car prices are ${carsStaleDays} days old — the weekly refresh (.github/workflows/refresh-data.yml) should keep this under ~7. Check whether its auto-merge is going through: github.com/natleewhee/natdtm/pulls?q=is:pr+refresh+car`,
     }
@@ -171,7 +168,7 @@ export default function DataStatusPage() {
       <div className="shell-wrap" style={{ padding: '40px 24px 72px', maxWidth: 760 }}>
         <p style={{
           fontFamily: 'var(--l-font-mono)', fontSize: 11, letterSpacing: '.12em',
-          textTransform: 'uppercase', color: SUB, margin: '0 0 12px',
+          textTransform: 'uppercase', color: C.muted, margin: '0 0 12px',
         }}>
           LTA data health
         </p>
@@ -181,7 +178,7 @@ export default function DataStatusPage() {
         }}>
           Is the data feeding into the calculator fresh?
         </h1>
-        <p style={{ color: SUB, fontSize: 14.5, lineHeight: 1.6, margin: '0 0 28px', maxWidth: '62ch' }}>
+        <p style={{ color: C.muted, fontSize: 14.5, lineHeight: 1.6, margin: '0 0 28px', maxWidth: '62ch' }}>
           COE premiums are fetched live on every visit; car prices are refreshed weekly instead of
           live per request (see why in the card below) and fall back to hardcoded COE constants or
           the bundled price snapshot when needed. That is good for visitors but hides breakage, so
@@ -189,7 +186,7 @@ export default function DataStatusPage() {
           needs an API key, so there is nothing secret to withhold here.
         </p>
 
-        {loading && <p style={{ fontSize: 14, color: SUB }}>Checking both feeds…</p>}
+        {loading && <p style={{ fontSize: 14, color: C.muted }}>Checking both feeds…</p>}
 
         {!loading && (
           <>
@@ -213,7 +210,7 @@ export default function DataStatusPage() {
                 </>
               )}
               <Row label="Checked" value={fmtWhen(coe?.checkedAt)} />
-              {coe?.detail && <p style={{ fontSize: 12.5, color: SUB, margin: '12px 0 0', lineHeight: 1.55 }}>{coe.detail}</p>}
+              {coe?.detail && <p style={{ fontSize: 12.5, color: C.muted, margin: '12px 0 0', lineHeight: 1.55 }}>{coe.detail}</p>}
               <FixNote text={coeState.fix} />
             </Card>
 
@@ -227,7 +224,7 @@ export default function DataStatusPage() {
               <Row label="Prices as of" value={fmtWhen(cars?.updatedAt)} />
               {carsStaleDays !== null && <Row label="Age" value={`${carsStaleDays} day${carsStaleDays !== 1 ? 's' : ''}`} mono />}
               <Row label="Checked" value={fmtWhen(cars?.checkedAt)} />
-              {cars?.detail && <p style={{ fontSize: 12.5, color: SUB, margin: '12px 0 0', lineHeight: 1.55 }}>{cars.detail}</p>}
+              {cars?.detail && <p style={{ fontSize: 12.5, color: C.muted, margin: '12px 0 0', lineHeight: 1.55 }}>{cars.detail}</p>}
               <FixNote text={carsState.fix} />
             </Card>
 
@@ -237,7 +234,7 @@ export default function DataStatusPage() {
               style={{
                 fontFamily: 'var(--l-font-mono)', fontSize: 12, letterSpacing: '.06em',
                 textTransform: 'uppercase', padding: '10px 18px', borderRadius: 4,
-                border: `1px solid ${LINE}`, background: C.surface, color: C.text, cursor: 'pointer',
+                border: `1px solid ${C.border}`, background: C.surface, color: C.text, cursor: 'pointer',
               }}
             >
               Re-check now

@@ -16,9 +16,13 @@ export function applyMode(mode) {
   Object.assign(C, BASE)
 }
 
+// `color`/`bg` are getters, not values: applyMode() mutates `C` in place,
+// so a hex read here at module-evaluation time would freeze whichever mode
+// loaded first and never follow a light/dark switch. Every other field is
+// a plain value — the calc engine reads `.rate`/`.id` and is unaffected.
 export const RATE_TIERS = [
-  { id:'ice',   label:'Standard ICE',       sub:'Petrol & diesel',   rate:0.0260, display:'2.60%', color:C.iceText,   bg:C.iceBg },
-  { id:'green', label:'Green EV / Hybrid',  sub:'Electric & hybrid', rate:0.0208, display:'2.08%', color:C.greenText, bg:C.greenBg },
+  { id:'ice',   label:'Standard ICE',       sub:'Petrol & diesel',   rate:0.0260, display:'2.60%', get color(){return C.iceText},   get bg(){return C.iceBg} },
+  { id:'green', label:'Green EV / Hybrid',  sub:'Electric & hybrid', rate:0.0208, display:'2.08%', get color(){return C.greenText}, get bg(){return C.greenBg} },
   { id:'tesla', label:'Tesla Preferential', sub:'Tesla models only', rate:0.0168, display:'1.68%', color:'#c4b5fd',   bg:'#241c33' },
 ]
 
