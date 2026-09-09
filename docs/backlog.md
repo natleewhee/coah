@@ -36,6 +36,59 @@ what's left.
   breaking, but inconsistent with how tight the rest of the mobile
   layout is.
 
+## Design taste (taste-skill audit, 2026-09-09)
+
+Ran the anti-slop checklist from
+[Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) against
+all 8 verticals' landing pages (rendered at 1440px, light + dark). Not
+bugs — these are "reads as templated/generic" findings, all evidenced
+against the actual source, not just the rubric's hard-ban list.
+
+- **The exact same hero shell is copy-pasted across 6 of 8 verticals.**
+  `background: C.ndtm, padding: '48px 32px 52px', textAlign: 'center'`
+  appears verbatim in `drive`, `house`, `flow`, `retire`, `tax`, and
+  `ledger`'s `page.js` — same eyebrow-label-then-centered-h1-then-italic-
+  subtext anatomy each time. `etf` and `insure` don't share the literal
+  string but use the identical visual pattern with inline styles. This
+  is precisely taste-skill's "no centered hero by default" ban, and
+  it's systemic rather than one page's choice.
+- **A single shared `TrustBadges` component renders an identical
+  4-pill trust row under every hero**, ending in the same two pills
+  verbatim every time: `'Zero data collected', 'Free, forever'`
+  (`drive`, `house`, `flow`, `ledger`, `retire`, `tax` — see
+  `src/app/*/page.js` call sites). `etf`/`insure` use their own
+  4-pill row in the same slot (`No sign-up / No data stored / No ads /
+  No commissions`). This is the generic SaaS "trust badge row" pattern
+  the skill flags, repeated 8 times with only the words swapped.
+- **Duplicate CTA copy template.** `etf` and `insure` both render
+  `"Check my {noun} — it's free"` as their primary CTA
+  (`src/app/etf/page.js:37`, `src/app/insure/page.js:87`) — same
+  sentence shape, same em-dash, different noun.
+- **~380 visible em-dashes in rendered copy**, not just comments —
+  hero subtext, hints, disclaimers, CTA labels, error messages, right
+  down to `data-status`'s own UI strings. Confirmed by reading the
+  actual JSX text nodes, not a blind grep. taste-skill's hard ban is
+  zero; going to zero site-wide is a copy-voice rewrite touching
+  dozens of files, not a mechanical find-replace (an em-dash often
+  needs restructuring the sentence, not just swapping punctuation).
+- **`etf`'s "what you'll get" section is a literal 3-equal-column
+  feature-card row** (Singapore Optimised / DCA Ready / Neutral Math,
+  each an icon + heading + 2-line description) — the other explicitly
+  banned pattern, on top of the centered hero above it.
+
+Not flagged: no AI-purple gradients, no marquees, no Fraunces/Instrument
+Serif — the Clay & Cream palette and Space Grotesk/Inter/JetBrains Mono
+stack are genuinely distinctive, not defaults. The issue is structural
+templating (hero/CTA/badge-row) and copy voice (em-dashes), not the
+visual design system itself.
+
+Fixing the hero/badge-row pattern means designing distinct anatomy per
+vertical (or at least 2-3 hero shapes to rotate through) and is a real
+design pass, not a quick edit — same caliber of change as MyLedger's
+form restructure above. Fixing the em-dashes is mechanical but touches
+copy voice across the whole site and shouldn't happen without a look at
+the rewritten sentences.
+
 ## From earlier code review (2026-09-06)
 
 - `.github/workflows/refresh-data.yml` uses `gh pr merge --admin` to
