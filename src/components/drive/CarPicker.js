@@ -158,15 +158,20 @@ export function CarPicker({ value, onChange, slot, ceiling, down, allCars = [], 
               return (
                 <button key={car.id} type="button" onClick={() => select(car)} className={`top5-btn${sel?' sel':''}`}
                   aria-pressed={sel}
-                  style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:sel?C.accentBg:C.bg,border:`1.5px solid ${sel?C.accent:C.border}`,borderRadius:C.r,cursor:'pointer',textAlign:'left',width:'100%'}}>
+                  style={{display:'flex',alignItems:'flex-start',gap:10,padding:'9px 12px',background:sel?C.accentBg:C.bg,border:`1.5px solid ${sel?C.accent:C.border}`,borderRadius:C.r,cursor:'pointer',textAlign:'left',width:'100%'}}>
                   {car.top5
-                    ? <span style={{fontSize:C.xs,fontFamily:C.fontMono,fontWeight:700,color:C.accent,minWidth:22,textAlign:'center'}}>#{car.rank}</span>
-                    : <span style={{fontSize:C.xs,fontFamily:C.fontMono,fontWeight:700,color:C.faint,minWidth:22,textAlign:'center'}}></span>}
+                    ? <span style={{fontSize:C.xs,fontFamily:C.fontMono,fontWeight:700,color:C.accent,minWidth:22,textAlign:'center',marginTop:2}}>#{car.rank}</span>
+                    : <span style={{fontSize:C.xs,fontFamily:C.fontMono,fontWeight:700,color:C.faint,minWidth:22,textAlign:'center',marginTop:2}}></span>}
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:C.sm,fontWeight:700,color:sel?C.primary:C.text,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{car.name}</div>
-                    <div style={{fontSize:C.xs,color:C.muted,marginTop:1}}>{car.type}</div>
+                    {/* Wraps to at most 2 lines rather than truncating — the car's
+                        name is the one thing being chosen between, so ellipsis
+                        (e.g. "Toyota Corol…") hid the exact info a narrow-phone
+                        user needs most. -webkit-line-clamp caps the longest
+                        names (~29 chars) at 2 lines instead of growing unbounded. */}
+                    <div style={{fontSize:C.sm,fontWeight:700,color:sel?C.primary:C.text,lineHeight:1.25,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{car.name}</div>
+                    <div style={{fontSize:C.xs,color:C.muted,marginTop:2}}>{car.type}</div>
                   </div>
-                  <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0,marginTop:2}}>
                     <span style={{fontSize:C.sm,fontFamily:C.fontMono,fontWeight:700,color:sel?C.primary:C.muted}}>{SGD(car.price)}</span>
                     <span style={{fontSize:C.xs,fontWeight:700,color:t.color,background:t.bg,border:`1px solid ${t.color}44`,borderRadius:100,padding:'2px 7px'}}>{t.display}</span>
                     {sel && <div style={{width:6,height:6,borderRadius:'50%',background:C.accent,boxShadow:`0 0 0 2px ${C.accentBg}`}}/>}
