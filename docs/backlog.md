@@ -89,6 +89,26 @@ form restructure above. Fixing the em-dashes is mechanical but touches
 copy voice across the whole site and shouldn't happen without a look at
 the rewritten sentences.
 
+## Impeccable critique (2026-09-10)
+
+Ran the detector-rule categories from
+[pbakaus/impeccable](https://github.com/pbakaus/impeccable) against the
+same 8 verticals — the cleanest of the three reviews. Everything it
+checks for (AI-slop markers, side-tab borders, nested cards, gray text
+on colored backgrounds, skipped heading hierarchy, line length, cramped
+padding, small touch targets) came back clean: either never present, or
+already fixed by PR #11's touch-target work. One item, logged rather
+than acted on:
+
+- **Inter is named in Impeccable's own "overused font" list** (with
+  Arial and system defaults), and it's `nat does the math`'s body font
+  in the Space Grotesk (display) / Inter (body) / JetBrains Mono
+  (numerics) stack. Not treating this as a defect — it's a deliberate,
+  well-executed choice (real variable font-face, not a fallback), and
+  Impeccable's own bias runs toward its own house aesthetic rather than
+  a universal rule. Swapping the body font would be a brand decision,
+  not a bug fix — noted here only so it's not re-discovered as "new."
+
 ## From earlier code review (2026-09-06)
 
 - `.github/workflows/refresh-data.yml` uses `gh pr merge --admin` to
