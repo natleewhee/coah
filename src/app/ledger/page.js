@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { C, SGD, parseMoney } from '@/lib/ledger/theme'
-import { calcNetWorth, calcTDSR } from '@/lib/ledger/calc'
+import { calcNetWorth, calcTDSR, calcInvestmentCapacity, buildBaselineState } from '@/lib/ledger/calc'
 import { calcMonthlyInstalment } from '@/lib/house/calc'
 import { loadMyNumbers, saveToolInputs, loadToolInputs } from '@/lib/shared/profile'
 import { runScenario, labelRead } from '@/lib/ledger/scenario/index'
@@ -20,6 +20,7 @@ import {
 import { CAR_CATALOG_ENDPOINT } from '@/lib/drive/endpoints'
 import { MoneyInput, PercentInput, NumberInput, SectionDivider } from '@/components/ledger/ui'
 import PositionEditor from '@/components/ledger/PositionEditor'
+import CapacityModule from '@/components/ledger/CapacityModule'
 import ScenarioColumn from '@/components/ledger/ScenarioColumn'
 import BundleEditor from '@/components/ledger/BundleEditor'
 import ComparisonRow from '@/components/ledger/ComparisonRow'
@@ -33,7 +34,7 @@ const MAX_SCENARIOS = 3 // baseline + up to 2 what-ifs
 
 const DEFAULT_ASSUMPTIONS = {
   currentAge: '', retirementAge: '65', lifeExpectancy: '90',
-  salary: '', investmentMonthly: '', salaryGrowthRate: '2.0',
+  salary: '', salaryGrowthRate: '2.0',
   swr: '3', reference: '',
 }
 const DEFAULT_BUNDLES = {
@@ -59,8 +60,14 @@ export default function MyLedgerPage() {
   const [savedTick, setSavedTick] = useState(0)
   const [justSaved, setJustSaved] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
+  const [capacityOpen, setCapacityOpen] = useState(false)
 
   const cache = useRef(new Map())
+  // Open the Capacity module by default only the first time myNumbers
+  // loads, and only when there's real saved data to show (F1/F2) — a
+  // later re-read from CapacityModule's own writes (see refreshMyNumbers)
+  // must never override the user's own manual toggle.
+  const capacityInitialized = useRef(false)
   const debounce = useRef(null)
   // The restore below sets state, which fires the autosave effect once
   // before the user has done anything. Skip that first write so merely
@@ -113,6 +120,18 @@ export default function MyLedgerPage() {
   }, [])
 
   useEffect(() => {
+    if (capacityInitialized.current || myNumbers == null) return
+    capacityInitialized.current = true
+    setCapacityOpen(!!myNumbers.flow?.inputs)
+  }, [myNumbers])
+
+  // CapacityModule writes straight to the shared store (same
+  // saveFlowNumbers call FlowState always made); this re-reads it so the
+  // read-only capacity figure below updates live as it's filled in (F3),
+  // without lifting the whole flow calculation up into this page.
+  const refreshMyNumbers = useCallback(() => setMyNumbers(loadMyNumbers()), [])
+
+  useEffect(() => {
     // Via the catalog route (Supabase, with the bundled snapshot as its
     // own fallback) — same source DriveReady's own picker uses.
     fetch(CAR_CATALOG_ENDPOINT)
@@ -152,6 +171,13 @@ export default function MyLedgerPage() {
     && parsedSalary > 0 && myNumbers != null
 
   const referenceInfo = myNumbers ? resolveReference(myNumbers, num(assumptions.reference)) : { reference: 0, source: 'none' }
+
+  // R1/R2: capacity is canonical — no manual field, just this computed
+  // figure and (when RetireWell has synced an actual contribution) a
+  // labeled comparison against it, never a second input to reconcile.
+  const investmentCapacity = myNumbers ? calcInvestmentCapacity(buildBaselineState(myNumbers)) : 0
+  const retireContribution = Number(myNumbers?.retire?.monthlyContribution) || 0
+  const capacityGap = investmentCapacity - retireContribution
 
   // ── Debounced + memoised recompute (KTD3) ────────────────────────────
   // The reference figure and the (solver-inert) SWR are deliberately NOT
@@ -297,6 +323,24 @@ export default function MyLedgerPage() {
           <PositionEditor position={position} onChange={setPosition} synced={myNumbers ? positionFromStore(myNumbers) : null} />
         </div>
 
+        <SectionDivider label="Monthly capacity" />
+        <button
+          type="button" onClick={() => setCapacityOpen((o) => !o)} aria-expanded={capacityOpen}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+            background: capacityOpen ? C.accentBg : C.bg, border: `1.5px solid ${capacityOpen ? C.accent : C.border}`,
+            borderRadius: 100, cursor: 'pointer', fontSize: C.xs, fontWeight: 700,
+            color: capacityOpen ? C.accent : C.muted, fontFamily: C.fontBody,
+          }}
+        >
+          {capacityOpen ? '− Hide' : '+ Show'} how much you can actually invest — CPF/cash split, living expenses, lumpy items
+        </button>
+        {capacityOpen && (
+          <div style={{ marginTop: 14 }}>
+            <CapacityModule onCapacityChange={refreshMyNumbers} />
+          </div>
+        )}
+
         <SectionDivider label="Assumptions (shared across every path)" />
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: C.rXL, padding: 22, boxShadow: C.shadow }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
@@ -304,7 +348,29 @@ export default function MyLedgerPage() {
             <NumberInput id="a-retire" label="Retirement age" value={assumptions.retirementAge} onChange={setField('retirementAge')} />
             <NumberInput id="a-life" label="Plan until age" value={assumptions.lifeExpectancy} onChange={setField('lifeExpectancy')} />
             <MoneyInput id="a-salary" label="Monthly salary" value={assumptions.salary} onChange={setField('salary')} hint={myNumbers?.retire?.salary ? `RetireWell has S$${Math.round(myNumbers.retire.salary).toLocaleString('en-SG')}` : undefined} />
-            <MoneyInput id="a-contrib" label="Monthly invested" value={assumptions.investmentMonthly} onChange={setField('investmentMonthly')} hint={myNumbers?.retire?.monthlyContribution ? `RetireWell has S$${Math.round(myNumbers.retire.monthlyContribution).toLocaleString('en-SG')}` : undefined} />
+            <div>
+              <label htmlFor="a-contrib" style={{ display: 'block', fontSize: C.sm, fontWeight: 600, color: C.primary, marginBottom: 7 }}>Monthly invested (computed)</label>
+              <div id="a-contrib" style={{
+                boxSizing: 'border-box', background: C.bg, border: `1.5px solid ${C.border}`, borderRadius: C.r,
+                padding: '11px 12px', color: C.primary, fontSize: C.lg, fontFamily: C.fontMono, fontWeight: 500,
+              }}>
+                {SGD(investmentCapacity)}
+              </div>
+              {investmentCapacity === 0 ? (
+                <p style={{ marginTop: 5, fontSize: C.xs, color: C.amberText, lineHeight: 1.5 }}>
+                  Fill in &quot;how much you can actually invest&quot; above to see your real monthly investable amount, rather than a bare S$0.
+                </p>
+              ) : retireContribution > 0 ? (
+                <p style={{ marginTop: 5, fontSize: C.xs, color: C.muted, lineHeight: 1.5 }}>
+                  RetireWell has S${Math.round(retireContribution).toLocaleString('en-SG')} synced —
+                  {capacityGap > 0 ? ` S$${Math.round(capacityGap).toLocaleString('en-SG')}/mo below your capacity.`
+                    : capacityGap < 0 ? ` S$${Math.round(-capacityGap).toLocaleString('en-SG')}/mo above your capacity.`
+                    : ' exactly matches your capacity.'}
+                </p>
+              ) : (
+                <p style={{ marginTop: 5, fontSize: C.xs, color: C.faint, lineHeight: 1.5 }}>Computed from take-home minus obligations minus living expenses.</p>
+              )}
+            </div>
             <PercentInput id="a-growth" label="Salary growth" value={assumptions.salaryGrowthRate} onChange={setField('salaryGrowthRate')} />
             <PercentInput id="a-swr" label="Safe withdrawal rate" value={assumptions.swr} onChange={setField('swr')} />
             <MoneyInput

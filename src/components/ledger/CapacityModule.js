@@ -54,7 +54,12 @@ const CATEGORY_FIELDS = [
 const MONTH_OPTIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   .map((label, value) => ({ label, value: String(value) }))
 
-export default function CapacityModule() {
+// onCapacityChange: called after every write to the shared `flow` slot
+// (livingExpenses/monthlySurplus), so a host page holding its own copy of
+// myNumbers (e.g. /ledger, read once on mount) knows to re-read the store
+// and pick up the new figures — this module still owns the actual write,
+// same saveFlowNumbers call FlowState always made (KTD2).
+export default function CapacityModule({ onCapacityChange }) {
   // ─── You / income ───────────────────────────────────────────────────
   const [age, setAge] = useState('')
   const [salary, setSalary] = useState('')
@@ -367,6 +372,7 @@ export default function CapacityModule() {
       trueSavingsRate: metrics?.trueSavings ?? null,
       cashSavingsRate: metrics?.cashSavings ?? null,
     })
+    onCapacityChange?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed off primitives via flow.nodes.living.value/flow.surplus, not the flow object identity (rebuilt every render)
   }, [calculated, flow?.nodes.living.value, flow?.surplus, metrics?.trueSavings, metrics?.cashSavings])
 

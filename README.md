@@ -1,6 +1,6 @@
 # ndtm — nat does the math
 
-One Next.js 16 app hosting eight free Singapore financial-decision
+One Next.js 16 app hosting seven free Singapore financial-decision
 calculators under a single shell, domain, and dark design system. Every
 number is traceable to a "the math" page that shows exactly how it was
 worked out. No accounts; everything runs client-side except DriveReady's
@@ -10,7 +10,7 @@ Deployed at **https://natdtm.vercel.app**. Full architecture notes in
 [`docs/architecture.md`](docs/architecture.md); statutory-constant sources
 in [`docs/statutory-sources.md`](docs/statutory-sources.md).
 
-## The eight tools
+## The seven tools
 
 | Tool | Route | What it answers |
 |---|---|---|
@@ -20,8 +20,7 @@ in [`docs/statutory-sources.md`](docs/statutory-sources.md).
 | **HouseMuch** | `/house` | What a property actually made you: profit/loss after CPF accrued-interest refund, mortgage interest, and stamp duties (BSD/ABSD/SSD). |
 | **RetireWell** | `/retire` | Whether you will have enough: CPF contributions and interest projected properly, investments stress-tested against a safe withdrawal rate. |
 | **TaxWise** | `/tax` | What you owe IRAS, your marginal vs effective rate, and what each relief (SRS, CPF top-up) is worth in dollars saved. |
-| **MyLedger** | `/ledger` | The whole picture: net worth, debt servicing across every loan, and what a car or a house upgrade does to retirement. |
-| **FlowState** | `/flow` | Where the salary goes: CPF split from cash automatically, the mortgage split into CPF vs bank, and the one month a year the account runs dry. |
+| **MyLedger** | `/ledger` | The whole picture: net worth, debt servicing across every loan, monthly investable capacity (CPF/cash split, living expenses, lumpy items), and what a car or a house upgrade does to retirement. |
 
 Each tool has a matching `/<tool>/the-math` page explaining its formulas
 and citing its sources.
@@ -75,7 +74,8 @@ e2e/                             Playwright: smoke.spec.js, keyboard.spec.js,
 Originally three separate apps (`sginsurecheck`, `sgdriveready`,
 `sgwhatetf`) under a "Coah" brand, later merged and rebranded to a
 personal "ndtm" identity with a permanent dark "Digital Workbench" theme,
-then extended to eight tools. Identifiers and strings have been renamed
+then extended to eight tools, later consolidated to seven when FlowState
+was absorbed into MyLedger as its Capacity module. Identifiers and strings have been renamed
 off the old brand; the one remaining trace is the `--l-*` CSS
 custom-property prefix (kept deliberately — a repo-wide rename of every
 token was judged higher risk than value). See `docs/architecture.md` for
@@ -96,7 +96,7 @@ string-concatenating a hex suffix, `${C.accent}44`, which needs real hex).
 - **Type** — Space Grotesk (display), Inter (body), JetBrains Mono
   (all numeric data), self-hosted, no font CDN
 
-Shared components carry one visual language across all eight tools:
+Shared components carry one visual language across all seven tools:
 `Button` (press feedback), `VerdictBadge` (mono uppercase stamp),
 `ExploreSection` (terminal-style "show the math" collapsible),
 `ResultHero` (verdict + big mono number + plain sentence), `MathTOC`,

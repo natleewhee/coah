@@ -1,6 +1,7 @@
 // src/lib/shared/docs-consistency.test.js
 // Keeps README.md's tool list in step with the home page. The README
-// used to describe three tools long after the app shipped eight.
+// used to describe three tools long after the app shipped eight — later
+// consolidated to seven when FlowState was absorbed into MyLedger.
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -17,7 +18,7 @@ const routes = [...HOME.matchAll(/href:\s*['"](\/[\w-]+)['"]/g)].map((m) => m[1]
 const toolEntryCount = (HOME.match(/^\s*href:\s*['"]\//gm) || []).length
 
 test('every TOOLS entry links to a distinct tool route', () => {
-  assert.ok(toolEntryCount >= 8, `TOOLS array has only ${toolEntryCount} entries`)
+  assert.ok(toolEntryCount >= 7, `TOOLS array has only ${toolEntryCount} entries`)
   assert.equal(
     new Set(routes).size, toolEntryCount,
     `expected ${toolEntryCount} distinct tool routes, got ${routes.join(', ')}`,
