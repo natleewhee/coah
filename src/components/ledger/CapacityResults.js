@@ -1,9 +1,8 @@
 'use client'
 
-import { C, SGD } from '@/lib/flow/theme'
+import { C, SGD } from '@/lib/ledger/theme'
 import { findTightestMonth, monthsToCloseEmergencyFundGap, DEFAULT_EMERGENCY_FUND_MONTHS } from '@/lib/flow/calc'
 import { CPF_OW_CEILING, CPF_ANNUAL_CEILING } from '@/lib/retire/cpf'
-import { calcInvestmentCapacity } from '@/lib/ledger/calc'
 import Sankey from './Sankey'
 import TroughChart from './TroughChart'
 
@@ -34,7 +33,7 @@ function Callout({ tone, title, children }) {
   )
 }
 
-export default function FlowResults({ flow, metrics, primarySchedule, altSchedule, taxPaymentMode, liquidSavings, gap, house, annualBonus, salary, age }) {
+export default function CapacityResults({ flow, metrics, primarySchedule, altSchedule, taxPaymentMode, liquidSavings, gap, house, annualBonus, salary, age }) {
   const trueSavingsPct = pct(metrics.trueSavings)
   const cashSavingsPct = pct(metrics.cashSavings)
   const fixedCostPct = pct(metrics.fixedCost)
@@ -47,20 +46,6 @@ export default function FlowResults({ flow, metrics, primarySchedule, altSchedul
   const primaryTrough = primarySchedule ? findTightestMonth(primarySchedule) : null
   const altTrough = altSchedule ? findTightestMonth(altSchedule) : null
   const isTight = primaryTrough && primaryTrough.shortfall > 0
-
-  const capacityBefore = calcInvestmentCapacity({
-    salary, monthlyTakeHome: flow.cash,
-    house: house ? { monthlyInstalment: house.monthlyInstalment } : null,
-    car: flow.nodes.car ? { monthlyInstalment: flow.nodes.car.value } : null,
-    insurancePremium: flow.nodes.insurance ? flow.nodes.insurance.value : 0,
-  })
-  const capacityAfter = calcInvestmentCapacity({
-    salary, monthlyTakeHome: flow.cash,
-    house: house ? { monthlyInstalment: house.monthlyInstalment } : null,
-    car: flow.nodes.car ? { monthlyInstalment: flow.nodes.car.value } : null,
-    insurancePremium: flow.nodes.insurance ? flow.nodes.insurance.value : 0,
-    livingExpenses: flow.nodes.living.value,
-  })
 
   const atCeiling = salary >= CPF_OW_CEILING
   const annualSalaryWages = Math.min(salary, CPF_OW_CEILING) * 12
@@ -197,48 +182,9 @@ export default function FlowResults({ flow, metrics, primarySchedule, altSchedul
         </div>
       )}
 
-      <div style={{ marginTop: 28 }}>
-        <h2 style={{ fontFamily: C.fontDisplay, fontSize: 22, color: C.primary, margin: '0 0 8px' }}>What changes in MyLedger</h2>
-        <p style={{ fontSize: C.sm, color: C.muted, lineHeight: 1.6, margin: '0 0 16px', maxWidth: '68ch' }}>
-          MyLedger&apos;s investment capacity used to assume you spend nothing on living. Now that FlowState has measured it, MyLedger uses the real figure — <a href="/ledger" style={{ color: C.accent }}>see it there</a>.
-        </p>
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: C.rXL, boxShadow: C.shadow, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
-            <thead>
-              <tr>
-                <th style={thStyle()}>Monthly investment capacity</th>
-                <th style={thStyle()}>Before FlowState</th>
-                <th style={thStyle()}>With FlowState</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={tdStyle()}>Assumed living expenses</td>
-                <td style={{ ...tdStyle(), ...tdNum, color: C.faint }}>not modeled</td>
-                <td style={{ ...tdStyle(), ...tdNum, color: C.redText }}>−{SGD(flow.nodes.living.value)}</td>
-              </tr>
-              <tr>
-                <td style={{ ...tdStyle(), fontWeight: 700, borderBottom: 'none' }}>Capacity handed to RetireWell</td>
-                <td style={{ ...tdStyle(), ...tdNum, fontSize: 16, color: C.accentText, borderBottom: 'none' }}>{SGD(capacityBefore)}</td>
-                <td style={{ ...tdStyle(), ...tdNum, fontSize: 16, color: C.greenText, borderBottom: 'none' }}>{SGD(capacityAfter)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   )
 }
-
-// Functions, not objects: `C` is mutated in place on a light/dark switch,
-// so a style object built at module scope keeps whichever mode's hex was
-// current when this file first evaluated.
-const thStyle = () => ({
-  textAlign: 'left', padding: '12px 16px', borderBottom: `1px solid ${C.border}`,
-  fontFamily: C.fontMono, fontSize: 10.5, letterSpacing: '0.09em', textTransform: 'uppercase', color: C.faint, fontWeight: 600,
-})
-const tdStyle = () => ({ textAlign: 'left', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, fontSize: 13.5 })
-const tdNum = { fontFamily: C.fontMono, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }
 
 function Legend({ color, label, dashed, dashLine }) {
   return (

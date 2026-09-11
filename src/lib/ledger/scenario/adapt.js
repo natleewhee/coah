@@ -4,7 +4,7 @@
 // Kept separate from the page so the mapping is unit-testable and shared
 // by /ledger and the /ledger/preview slice. Pure — no React, no fetch.
 
-import { buildBaselineState } from '../calc.js'
+import { buildBaselineState, calcInvestmentCapacity } from '../calc.js'
 import { checkFreshness } from '../../shared/freshness.js'
 import { parseMoney } from '../../shared/theme.js'
 
@@ -117,7 +117,11 @@ export function buildRetireAssumptions(myNumbers, fields = {}) {
     salary: fields.salary || r.salary || 0,
     annualBonus: fields.annualBonus || 0,
     salaryGrowthRate: fields.salaryGrowthRate || 0,
-    investmentMonthly: fields.investmentMonthly ?? r.monthlyContribution ?? 0,
+    // Canonical capacity (KD1) — takeHome minus obligations minus living
+    // expenses, the same number the Capacity module shows. RetireWell's own
+    // synced monthlyContribution is no longer a fallback here; it's surfaced
+    // separately as a comparison (see calcInvestmentCapacity/buildBaselineState).
+    investmentMonthly: calcInvestmentCapacity(buildBaselineState(myNumbers)),
     rstuAmount: fields.rstuAmount || 0,
     rstuFrequency: fields.rstuFrequency || 'monthly',
     housingOaMonthly: fields.housingOaMonthly || 0,

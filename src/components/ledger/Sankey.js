@@ -1,8 +1,15 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { C, getFateColor, SGD } from '@/lib/flow/theme'
+import { C, SGD } from '@/lib/ledger/theme'
 import { SOURCE } from '@/lib/flow/calc.js'
+
+// Fate colors — the Sankey's semantic palette, separate from the brand
+// accent. A getter, not a static snapshot, so it tracks `C` across a mode
+// switch (see mutable-theme-token-object.md).
+function getFateColor() {
+  return { kept: C.green, gone: C.red, invested: C.blue, neutral: C.muted }
+}
 
 // Fixed 4-column topology — not a general graph-layout problem, since
 // FlowState's flow always has the same shape (earn → split → sit → go).
