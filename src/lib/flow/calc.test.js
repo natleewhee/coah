@@ -345,8 +345,8 @@ test('compareGiroToLump: both modes end the year at the identical balance — GI
 // ─── Regression: buildMonthlyFlow's surplus feeding buildTwelveMonthSchedule
 // must not double-count tax. flow.surplus already has this month's tax
 // provision (flow.tax.monthly) subtracted — the schedule does its OWN tax
-// accounting (GIRO or lump), so the caller (src/app/flow/page.js) must add
-// tax.monthly back onto the base before handing it to the schedule, or a
+// accounting (GIRO or lump), so the caller (src/components/ledger/CapacityModule.js)
+// must add tax.monthly back onto the base before handing it to the schedule, or a
 // full year of tax gets subtracted twice: once already baked into every
 // month's base, and again via the schedule's own taxByMonth.
 test('flow.surplus fed into buildTwelveMonthSchedule without adding tax back double-counts a full year of tax (documents the bug the page.js fix avoids)', () => {
