@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { C } from '@/lib/ledger/theme'
 import { TDSR_LIMIT, TAKE_HOME_RATE, MSR_LIMIT } from '@/lib/ledger/calc'
+import { DEFAULT_EMERGENCY_FUND_MONTHS } from '@/lib/flow/calc'
 import ShellHeader from '@/components/shared/ShellHeader'
 import MathTOC from '@/components/shared/MathTOC'
 
@@ -44,13 +45,14 @@ export default function LedgerTheMathPage() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
         <h1 style={{ fontFamily: C.fontDisplay, fontSize: 32, color: C.primary, margin: '0 0 8px' }}>How MyLedger puts everything together</h1>
         <p style={{ fontSize: C.base, color: C.muted, margin: '0 0 8px' }}>
-          Every number here comes from HouseMuch, DriveReady, and RetireWell&apos;s own formulas — this page only covers how they&apos;re combined.
+          Every number here comes from HouseMuch, DriveReady, RetireWell, and the built-in Capacity module&apos;s own formulas — this page only covers how they&apos;re combined.
         </p>
 
         <MathTOC items={[
           { id: 'where-the-numbers-come-from', label: 'Where the numbers come from' },
           { id: 'net-worth', label: 'Net worth' },
           { id: 'monthly-commitments-tdsr-and-msr', label: 'Commitments, TDSR & MSR' },
+          { id: 'the-capacity-module', label: 'The Capacity module' },
           { id: 'investment-capacity-and-why-it-rises', label: 'Investment capacity' },
           { id: 'retirement-projection', label: 'Retirement projection' },
           { id: 'scenarios', label: 'Scenarios' },
@@ -89,6 +91,32 @@ Applies to HDB only. Does not apply to private property.`}</Formula>
           <Caveat>A real bank&apos;s calculation also counts credit facilities this tool has no way to know about (credit cards, personal loans, guarantor obligations), applies haircuts to variable income, and stress-tests the mortgage at a floor rate above what you&apos;re actually paying. Treat both ratios as directional checks, not a substitute for what your bank will compute.</Caveat>
         </Section>
 
+        <Section title="The Capacity module">
+          <P>The Capacity module (collapsed by default under &quot;Your current position&quot;) measures your real monthly spend, the same way the standalone FlowState tool used to before it was absorbed into MyLedger — same calc engine, just relocated. Its output feeds &quot;Investment capacity&quot; below directly.</P>
+          <P>A Singapore salary doesn&apos;t reach your bank account as one number. Before you see anything, it splits into a <strong>CPF pipe</strong> (locked away, split further into OA/SA/MA — see RetireWell&apos;s <a href="/retire/the-math" style={{ color: C.accent }}>the math</a> for the age-banded contribution table) and a <strong>cash pipe</strong> (spendable, after income tax, which the module estimates via TaxWise&apos;s own calculation when you haven&apos;t run TaxWise directly). Your employer also contributes CPF on top of your salary — compensation you never see as cash, but real money nonetheless.</P>
+          <P>Most budgeting tools only look at the cash pipe, which makes a mortgage partly paid from CPF look like it costs more cash than it actually does, and makes your real savings rate look far lower than it is. An instalment is really four different flows, not one expense line — it splits into interest (gone forever) and principal (equity you now own), and separately into a CPF-funded portion and a cash-funded portion, applied evenly across both legs since CPF isn&apos;t earmarked to pay one before the other:</P>
+          <Formula>{`Interest  = outstanding balance × (rate ÷ 12)
+Principal = instalment − interest
+
+CPF share = min(instalment, CPF-OA portion) ÷ instalment
+CPF-funded interest   = interest  × CPF share
+CPF-funded principal  = principal × CPF share
+Cash-funded interest  = interest  × (1 − CPF share)
+Cash-funded principal = principal × (1 − CPF share)`}</Formula>
+          <P>Only the two cash-funded legs count toward the module&apos;s fixed-cost ratio and cash burn — the CPF-funded legs never touched your bank account, so charging them against cash would double-count money you never had to begin with.</P>
+          <P>A monthly average also hides the shape of a year. The module&apos;s twelve-month schedule starts from a typical month&apos;s cash surplus, then applies whichever income-tax payment treatment you&apos;re modeling and any lumpy items (road tax, insurance renewals, a bonus) in the month you say they land:</P>
+          <Formula>{`Lump-sum tax: the full annual bill lands once, in the month you choose
+GIRO tax:     the annual bill divides evenly across all twelve months
+
+balance[month] = balance[month − 1] + base surplus − tax this month + lumpy items this month`}</Formula>
+          <P>The tightest month is whichever one has the lowest running balance. Comparing lump-sum against GIRO isolates exactly one lever: both end the year at the identical total, since GIRO doesn&apos;t change how much tax you pay — only when. If GIRO removes or shrinks the trough, that&apos;s a free fix; if a trough remains even on GIRO, the honest answer is to set cash aside ahead of time.</P>
+          <P>Whenever liquid savings fall short of {DEFAULT_EMERGENCY_FUND_MONTHS} months of the same real cash burn the runway metric uses, the module flags the shortfall and estimates how long it&apos;d take to close:</P>
+          <Formula>{`Target        = ${DEFAULT_EMERGENCY_FUND_MONTHS} × (cash-funded mortgage + car + insurance + living expenses)
+Gap           = max(0, target − liquid savings)
+Months to close = ceil(gap ÷ this month's cash surplus)`}</Formula>
+          <Caveat>The module models one salaried income — freelance, rental, or director&apos;s fee income isn&apos;t split into CPF/cash the same way and isn&apos;t handled here. {DEFAULT_EMERGENCY_FUND_MONTHS} months is a general rule of thumb, not tailored to your situation. Living expenses, liquid savings, and every lumpy item are figures you enter; the module is only as accurate as they are, which is why its back-solve mode (working backward from a real bank balance) exists as an alternative to guessing.</Caveat>
+        </Section>
+
         <Section title="Investment capacity, and why it rises">
           <P>What&apos;s realistically left to invest each month, after take-home pay covers every commitment AND your living expenses — this replaces the guessed monthly-contribution figure RetireWell would otherwise ask for:</P>
           <Formula>{`Investment capacity = max(0, take-home pay − total commitments − living expenses)`}</Formula>
@@ -102,7 +130,7 @@ Fallback:         gross × ${(TAKE_HOME_RATE * 100).toFixed(0)}%`}</Formula>
               − (car instalment, if m < months left on the car loan)
               − insurance premiums   (no tenure — assumed ongoing)
               − living expenses     (no tenure — assumed ongoing)`}</Formula>
-          <Caveat>Leaving a &quot;years left&quot; field blank means that loan is assumed to run all the way to retirement — the conservative reading. Insurance premiums and living expenses are assumed to continue indefinitely — right for whole-life/hospitalisation cover and for baseline living costs, but it overstates the cost of a term policy that expires, and doesn&apos;t model living expenses changing over time (e.g. after a mortgage is paid off). Living expenses come from FlowState when you&apos;ve run it; otherwise this assumes zero, which overstates capacity.</Caveat>
+          <Caveat>Leaving a &quot;years left&quot; field blank means that loan is assumed to run all the way to retirement — the conservative reading. Insurance premiums and living expenses are assumed to continue indefinitely — right for whole-life/hospitalisation cover and for baseline living costs, but it overstates the cost of a term policy that expires, and doesn&apos;t model living expenses changing over time (e.g. after a mortgage is paid off). Living expenses come from the Capacity module above when you&apos;ve filled it in; otherwise this assumes zero, which overstates capacity.</Caveat>
         </Section>
 
         <Section title="Retirement projection">

@@ -72,13 +72,6 @@ const TOOLS = [
       <rect x="13" y="13" width="7" height="7" rx="1.5" />
     </>,
   },
-  {
-    href: '/flow',
-    eyebrow: 'Cashflow',
-    title: 'FlowState',
-    desc: 'Where your salary actually goes — CPF split from cash automatically, your mortgage split into what is paid from CPF vs cash, and the one month a year your account runs dry.',
-    icon: <path d="M3 15c2-4 4 4 6 0s4 4 6 0 4 4 6 0" />,
-  },
 ]
 
 export default function HomePage() {
@@ -95,7 +88,7 @@ export default function HomePage() {
           fontFamily: 'var(--l-font-mono)', fontSize: 11, letterSpacing: '.06em',
           color: 'var(--color-accent-text)',
         }}>
-          Eight calculators, one household
+          Seven calculators, one household
         </span>
       </div>
       <h1 style={{

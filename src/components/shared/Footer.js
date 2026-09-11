@@ -24,8 +24,7 @@ const DISCLAIMERS = {
   '/house': 'HouseMuch: educational tool only, not financial or legal advice. Stamp duty and CPF accrued interest figures are estimates based on public formulas and may not reflect the latest rates — verify with IRAS, CPF Board, and a conveyancing lawyer before making any property decision. Not affiliated with HDB, CPF Board, or IRAS.',
   '/retire': 'RetireWell: educational tool only, not financial advice. CPF contribution/interest figures are estimates based on public formulas and may not reflect the latest rates. Safe withdrawal rate and investment return assumptions are not guaranteed. Consult a MAS-licensed financial adviser before making any retirement decision. Not affiliated with CPF Board or MAS.',
   '/tax': 'TaxWise: educational tool only, not tax advice. Rates and relief caps are entered by hand from public IRAS schedules and may not reflect the latest Budget changes or any Personal Income Tax Rebate. Non-residents are not modeled. Verify at iras.gov.sg or consult a tax adviser before filing. Not affiliated with IRAS or CPF Board.',
-  '/ledger': 'MyLedger: educational tool only, not financial advice. Net worth, TDSR, and retirement projections are estimates built from figures you enter or sync from the other tools, and may not reflect your actual financial position. Consult a MAS-licensed financial adviser before making any financial decision.',
-  '/flow': 'FlowState: educational tool only, not financial advice. CPF contribution rates, wage ceilings, and income tax are estimates based on public formulas and may not reflect the latest rates or your actual payslip. Living expenses and lumpy items are figures you enter and are only as accurate as your input. Not affiliated with CPF Board or IRAS.',
+  '/ledger': 'MyLedger: educational tool only, not financial advice. Net worth, TDSR, retirement projections, and the built-in Capacity module\'s CPF/cash split and living-expense figures are estimates built from figures you enter or sync from the other tools, and may not reflect your actual financial position. Consult a MAS-licensed financial adviser before making any financial decision.',
 }
 
 export default function Footer() {
@@ -56,7 +55,6 @@ export default function Footer() {
             <a href="/retire/the-math">Retire</a>
             <a href="/tax/the-math">Tax</a>
             <a href="/ledger/the-math">MyLedger</a>
-            <a href="/flow/the-math">FlowState</a>
           </div>
         </div>
 

@@ -14,7 +14,6 @@ const TOOLS = [
   { key: 'retire', href: '/retire', label: 'Retire' },
   { key: 'tax', href: '/tax', label: 'Tax' },
   { key: 'ledger', href: '/ledger', label: 'MyLedger' },
-  { key: 'flow', href: '/flow', label: 'FlowState' },
 ]
 
 // One header, not two stacked bars. The ndtm wordmark and "which tool am I

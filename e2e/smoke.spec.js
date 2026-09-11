@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 // Every tool and its "the math" page renders without error. Covers R5.
 
-const TOOLS = ['insure', 'drive', 'etf', 'house', 'retire', 'tax', 'ledger', 'flow']
+const TOOLS = ['insure', 'drive', 'etf', 'house', 'retire', 'tax', 'ledger']
 
 // Fail a page check if the browser logs an uncaught error or a React
 // error while the page loads — a 200 with a broken client component
@@ -16,7 +16,7 @@ function trackPageErrors(page) {
   return errors
 }
 
-test('home page renders all eight tool cards', async ({ page }) => {
+test('home page renders all seven tool cards', async ({ page }) => {
   const errors = trackPageErrors(page)
   const res = await page.goto('/')
   expect(res?.status(), 'GET / status').toBe(200)
@@ -51,3 +51,16 @@ for (const tool of TOOLS) {
     expect(errors, `browser errors on /${tool}/the-math`).toEqual([])
   })
 }
+
+// FlowState was absorbed into MyLedger's Capacity module — both of its old
+// routes return a hard 410 rather than a redirect (KD4/KTD4), so nothing
+// still resolves to a standalone FlowState decision.
+test('/flow returns 410 Gone', async ({ page }) => {
+  const res = await page.goto('/flow')
+  expect(res?.status(), 'GET /flow status').toBe(410)
+})
+
+test('/flow/the-math returns 410 Gone', async ({ page }) => {
+  const res = await page.goto('/flow/the-math')
+  expect(res?.status(), 'GET /flow/the-math status').toBe(410)
+})
