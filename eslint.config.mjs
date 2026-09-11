@@ -23,6 +23,7 @@ const eslintConfig = defineConfig([
     files: [
       "src/app/**/page.js",
       "src/components/drive/CarPicker.js",
+      "src/components/ledger/CapacityModule.js",
     ],
     rules: {
       "react-hooks/set-state-in-effect": "off",

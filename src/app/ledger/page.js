@@ -165,7 +165,6 @@ export default function MyLedgerPage() {
       retirementAge: num(assumptions.retirementAge),
       lifeExpectancy: num(assumptions.lifeExpectancy) || 90,
       salary: num(assumptions.salary),
-      investmentMonthly: assumptions.investmentMonthly === '' ? undefined : num(assumptions.investmentMonthly),
       salaryGrowthRate: num(assumptions.salaryGrowthRate),
     })
     const sharedSig = JSON.stringify({ baseState, retireAssumptions, bundles })

@@ -5,6 +5,7 @@ import {
   buildScenarioBaseState, buildRetireAssumptions, resolveReference, staleSyncedSlots, SYNC_STALE_DAYS,
   toEngineMove, yearError, positionFromStore,
 } from './adapt.js'
+import { calcInvestmentCapacity, buildBaselineState } from '../calc.js'
 
 const MY_NUMBERS = {
   retire: { salary: 8000, oaBalance: 100_000, saBalance: 80_000, maBalance: 40_000, investmentBalance: 60_000, monthlyContribution: 2000, savedAt: Date.now() },
@@ -68,14 +69,16 @@ test('positionFromStore pre-fills the editable fields from synced tool numbers',
   assert.equal(p.cash, '') // no source tool for cash
 })
 
-test('buildRetireAssumptions prefers surface fields but falls back to the retire slot', () => {
+test('buildRetireAssumptions uses canonical investment capacity, ignoring RetireWell\'s own synced contribution (KD1)', () => {
+  const expectedCapacity = calcInvestmentCapacity(buildBaselineState(MY_NUMBERS))
   const a = buildRetireAssumptions(MY_NUMBERS, { currentAge: 42, retirementAge: 65, lifeExpectancy: 92, swr: 3 })
   assert.equal(a.currentAge, 42)
   assert.equal(a.salary, 8000) // from the slot
-  assert.equal(a.investmentMonthly, 2000) // from the slot
+  assert.equal(a.investmentMonthly, expectedCapacity) // canonical capacity, not the slot's monthlyContribution (2000)
+  // A surface-typed investmentMonthly no longer overrides the canonical figure.
   const b = buildRetireAssumptions(MY_NUMBERS, { salary: 9500, investmentMonthly: 3000 })
   assert.equal(b.salary, 9500)
-  assert.equal(b.investmentMonthly, 3000)
+  assert.equal(b.investmentMonthly, expectedCapacity)
 })
 
 test('resolveReference uses FlowState living expenses when present, else the user field', () => {

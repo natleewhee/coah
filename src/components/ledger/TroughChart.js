@@ -1,6 +1,6 @@
 'use client'
 
-import { C, SGD } from '@/lib/flow/theme'
+import { C, SGD } from '@/lib/ledger/theme'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 

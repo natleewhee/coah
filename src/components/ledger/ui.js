@@ -165,6 +165,24 @@ export function VerdictChip({ read }) {
   )
 }
 
+// Pill toggle for a boolean setting (e.g. "I have a mortgage") — used by
+// the Capacity module, which has several of them.
+export function Toggle({ active, onClick, children }) {
+  return (
+    <button
+      type="button" onClick={onClick} aria-pressed={active}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+        background: active ? C.accentBg : C.bg, border: `1.5px solid ${active ? C.accent : C.border}`,
+        borderRadius: 100, cursor: 'pointer', fontSize: C.xs, fontWeight: 700,
+        color: active ? C.accent : C.muted, fontFamily: C.fontBody,
+      }}
+    >
+      {active ? '✓ ' : ''}{children}
+    </button>
+  )
+}
+
 // Two/three-way pill toggle — same visual shape used across the other tools.
 export function Segmented({ options, value, onChange }) {
   return (
